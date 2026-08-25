@@ -123,7 +123,7 @@ def build_seller_metrics(seller_orders: pd.DataFrame) -> pd.DataFrame:
         late_delivery_rate=("is_late_delivery", "mean"),
         average_delivery_delay_days=("delivery_delay_days", "mean"),
         average_review_score=("review_score", "mean"),
-        negative_review_rate=("review_score", lambda values: float((values <= 2).mean())),
+        negative_review_rate=("review_score", lambda s: float(s.dropna().le(2).mean()) if s.notna().any() else 0.0),
         average_response_time_hours=("response_time_hours", "mean"),
     )
     metrics["cancellation_rate_proxy"] = metrics["cancelled_orders"] / metrics["total_orders"]
