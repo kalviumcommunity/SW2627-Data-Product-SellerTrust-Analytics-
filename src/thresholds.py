@@ -19,6 +19,13 @@ RISK_METRICS = (
     "negative_review_rate",
 )
 
+SEGMENT_LABELS = (
+    "High-Risk",
+    "Return-Prone",
+    "Inconsistent",
+    "Reliable",
+)
+
 
 def _resolve_metrics(
     seller_metrics: pd.DataFrame,
@@ -93,4 +100,72 @@ def build_threshold_config(
             metric_columns=metrics,
             percentiles=percentile_levels,
         ),
+    }
+
+
+def compute_trust_score_distribution(trust_scores: pd.Series) -> dict[str, object]:
+    """Compute descriptive distribution statistics for trust scores."""
+    numeric_scores = pd.to_numeric(trust_scores, errors="coerce").dropna()
+    if numeric_scores.empty:
+        raise ValueError("trust_scores must contain at least one numeric value.")
+
+    quartiles = numeric_scores.quantile([0.25, 0.5, 0.75])
+    return {
+        "mean": round(float(numeric_scores.mean()), 2),
+        "median": round(float(quartiles.loc[0.5]), 2),
+        "std": round(float(numeric_scores.std(ddof=0)), 2),
+        "quartile_breaks": {
+            "q1": round(float(quartiles.loc[0.25]), 2),
+            "q2": round(float(quartiles.loc[0.5]), 2),
+            "q3": round(float(quartiles.loc[0.75]), 2),
+        },
+    }
+
+
+def _segment_sizes(trust_scores: pd.Series, thresholds: Iterable[float]) -> pd.Series:
+    values = pd.to_numeric(trust_scores, errors="coerce").dropna()
+    if values.empty:
+        raise ValueError("trust_scores must contain at least one numeric value.")
+
+    ordered_thresholds = sorted(float(value) for value in thresholds)
+    if len(ordered_thresholds) != 3:
+        raise ValueError("thresholds must include exactly three values.")
+
+    segments = pd.cut(
+        values,
+        bins=[float("-inf"), *ordered_thresholds, float("inf")],
+        labels=SEGMENT_LABELS,
+        include_lowest=True,
+    )
+    counts = segments.value_counts(normalize=True).reindex(SEGMENT_LABELS, fill_value=0.0)
+    return counts
+
+
+def validate_segmentation_thresholds(
+    trust_scores: pd.Series,
+    thresholds: Iterable[float],
+    min_share: float = 0.05,
+) -> dict[str, object]:
+    """Validate tier balance and adjust to quartiles when a tier is too small."""
+    if not 0 < min_share < 0.25:
+        raise ValueError("min_share must be > 0 and < 0.25.")
+
+    tier_shares = _segment_sizes(trust_scores, thresholds)
+    is_balanced = bool((tier_shares >= min_share).all())
+
+    adjusted_thresholds = sorted(float(value) for value in thresholds)
+    if not is_balanced:
+        numeric_scores = pd.to_numeric(trust_scores, errors="coerce").dropna()
+        quartiles = numeric_scores.quantile([0.25, 0.5, 0.75])
+        adjusted_thresholds = [float(quartiles.loc[q]) for q in (0.25, 0.5, 0.75)]
+        tier_shares = _segment_sizes(numeric_scores, adjusted_thresholds)
+        is_balanced = bool((tier_shares >= min_share).all())
+
+    return {
+        "is_balanced": is_balanced,
+        "min_share": min_share,
+        "thresholds": adjusted_thresholds,
+        "tier_shares": {
+            tier: round(float(share), 4) for tier, share in tier_shares.items()
+        },
     }
