@@ -40,6 +40,8 @@ class BehaviourSignalTests(unittest.TestCase):
 
         self.assertEqual(fig.layout.title.text, "Return Rate Proxy vs Trust Score")
         self.assertGreater(len(fig.data), 0)
+        hovertemplate = fig.data[0].hovertemplate or ""
+        self.assertIn("seller_id", hovertemplate)
         self.assertEqual(fig.layout.xaxis.tickformat, ".0%")
 
     def test_correlation_heatmap_contains_risk_signal_matrix(self):
