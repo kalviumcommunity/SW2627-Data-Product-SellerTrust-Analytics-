@@ -20,8 +20,12 @@ RISK_SIGNAL_COLUMNS = [
 def prepare_signal_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
     """Return scored, eligible seller metrics for behaviour-signal visuals."""
     prepared = prepare_seller_metrics(metrics)
-    eligible = prepared[prepared["eligible_for_risk_score"].astype(bool)].copy()
-
+    eligible_flag = prepared["eligible_for_risk_score"]
+    if not pd.api.types.is_bool_dtype(eligible_flag):
+        eligible_flag = (
+            eligible_flag.astype("string").str.lower().isin(["true", "1", "yes"])
+        )
+    eligible = prepared[eligible_flag].copy()
     for column in RISK_SIGNAL_COLUMNS:
         if column in eligible.columns:
             eligible[column] = pd.to_numeric(eligible[column], errors="coerce")
