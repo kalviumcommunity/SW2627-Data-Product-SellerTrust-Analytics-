@@ -5,7 +5,12 @@ from app.overview import build_overview_kpis, load_seller_metrics
 from app.signals import (
     build_cohort_comparison,
     build_correlation_heatmap,
+    build_monthly_sentiment_bar,
+    build_performance_decay_chart,
     build_return_rate_scatter,
+    build_trust_score_trend,
+    load_seller_order_fact,
+    prepare_monthly_seller_metrics,
     prepare_signal_metrics,
 )
 
@@ -124,6 +129,36 @@ with signals_tab:
                 hide_index=True,
                 use_container_width=True,
             )
+
+            try:
+                order_fact = load_seller_order_fact(signal_metrics["seller_id"])
+            except FileNotFoundError:
+                order_fact = None
+                st.warning(
+                    "Load data/trust_analytics.db to show seller performance trends."
+                )
+
+            if order_fact is not None:
+                monthly_metrics = prepare_monthly_seller_metrics(order_fact)
+                if monthly_metrics.empty:
+                    st.info("No monthly seller history is available for trend visuals.")
+                else:
+                    st.markdown("#### Seller Performance Trends")
+                    st.plotly_chart(
+                        build_trust_score_trend(monthly_metrics),
+                        use_container_width=True,
+                    )
+                    sentiment_col, decay_col = st.columns(2)
+                    with sentiment_col:
+                        st.plotly_chart(
+                            build_monthly_sentiment_bar(order_fact),
+                            use_container_width=True,
+                        )
+                    with decay_col:
+                        st.plotly_chart(
+                            build_performance_decay_chart(monthly_metrics),
+                            use_container_width=True,
+                        )
 
 with scorecard_tab:
     st.subheader("Seller Scorecard")

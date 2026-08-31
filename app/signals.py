@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+from pathlib import Path
+import sqlite3
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
 from app.overview import prepare_seller_metrics
+from src.sql_loader import DEFAULT_DB_PATH
+from src.trust_score import calculate_trust_score
 
 
 RISK_SIGNAL_COLUMNS = [
@@ -14,6 +19,17 @@ RISK_SIGNAL_COLUMNS = [
     "average_response_time_hours",
     "average_review_score",
     "trust_score",
+]
+
+MONTHLY_SIGNAL_COLUMNS = [
+    "seller_id",
+    "purchase_month",
+    "total_orders",
+    "trust_score",
+    "cancellation_rate_proxy",
+    "late_delivery_rate",
+    "negative_review_rate",
+    "average_review_score",
 ]
 
 
@@ -123,3 +139,205 @@ def build_cohort_comparison(metrics: pd.DataFrame) -> pd.DataFrame:
     summary["avg_trust_score"] = summary["avg_trust_score"].round(1)
     summary["avg_review_score"] = summary["avg_review_score"].round(2)
     return summary
+
+
+def load_seller_order_fact(
+    seller_ids: list[str] | pd.Series | None = None,
+    db_path: str | Path = DEFAULT_DB_PATH,
+) -> pd.DataFrame:
+    """Load order-level facts for the selected sellers from SQLite."""
+    db_file = Path(db_path)
+    if not db_file.is_file():
+        raise FileNotFoundError(f"SQLite database not found: {db_file}")
+
+    query = "SELECT * FROM seller_order_fact"
+    params: list[str] = []
+    if seller_ids is not None:
+        seller_values = [seller_id for seller_id in seller_ids if pd.notna(seller_id)]
+        if not seller_values:
+            return pd.DataFrame()
+        placeholders = ", ".join(["?"] * len(seller_values))
+        query += f" WHERE seller_id IN ({placeholders})"
+        params.extend(seller_values)
+
+    with sqlite3.connect(str(db_file)) as conn:
+        return pd.read_sql_query(query, conn, params=params)
+
+
+def prepare_monthly_seller_metrics(order_fact: pd.DataFrame) -> pd.DataFrame:
+    """Roll order facts into seller-month metrics and calculate monthly trust score."""
+    if order_fact.empty:
+        return pd.DataFrame(columns=MONTHLY_SIGNAL_COLUMNS)
+
+    fact = order_fact.copy()
+    fact["purchase_month"] = fact["purchase_month"].fillna(
+        pd.to_datetime(
+            fact["order_purchase_timestamp"],
+            errors="coerce",
+        ).dt.to_period("M").astype("string")
+    )
+    fact["review_score"] = pd.to_numeric(fact["review_score"], errors="coerce")
+    fact["is_late_delivery"] = pd.to_numeric(
+        fact["is_late_delivery"], errors="coerce"
+    ).fillna(0)
+    fact["response_time_hours"] = pd.to_numeric(
+        fact["response_time_hours"], errors="coerce"
+    )
+
+    monthly = fact.groupby(["seller_id", "purchase_month"], as_index=False).agg(
+        total_orders=("order_id", "nunique"),
+        cancelled_orders=(
+            "order_status",
+            lambda values: int(values.astype("string").str.lower().eq("canceled").sum()),
+        ),
+        late_delivery_rate=("is_late_delivery", "mean"),
+        average_delivery_delay_days=("delivery_delay_days", "mean"),
+        average_review_score=("review_score", "mean"),
+        negative_review_rate=(
+            "review_score",
+            lambda values: float(values.dropna().le(2).mean())
+            if values.notna().any()
+            else 0.0,
+        ),
+        average_response_time_hours=("response_time_hours", "mean"),
+    )
+    monthly["cancellation_rate_proxy"] = (
+        monthly["cancelled_orders"] / monthly["total_orders"]
+    )
+    monthly["eligible_for_risk_score"] = monthly["total_orders"] >= 1
+    scored = calculate_trust_score(monthly)
+    scored["purchase_month"] = pd.to_datetime(
+        scored["purchase_month"],
+        errors="coerce",
+    )
+    return scored.dropna(subset=["purchase_month", "trust_score"])
+
+
+def build_trust_score_trend(monthly_metrics: pd.DataFrame) -> go.Figure:
+    """Build a monthly trust-score trend line for seller performance."""
+    trend = (
+        monthly_metrics.groupby("purchase_month", as_index=False)
+        .agg(
+            avg_trust_score=("trust_score", "mean"),
+            sellers=("seller_id", "nunique"),
+            total_orders=("total_orders", "sum"),
+        )
+        .sort_values("purchase_month")
+    )
+    fig = px.line(
+        trend,
+        x="purchase_month",
+        y="avg_trust_score",
+        markers=True,
+        hover_data={"sellers": True, "total_orders": True, "avg_trust_score": ":.2f"},
+        labels={
+            "purchase_month": "Purchase Month",
+            "avg_trust_score": "Average Trust Score",
+            "sellers": "Active Sellers",
+            "total_orders": "Orders",
+        },
+        title="Seller Trust Score Trend Over Time",
+    )
+    fig.update_layout(height=420, margin={"l": 20, "r": 20, "t": 60, "b": 20})
+    return fig
+
+
+def build_monthly_sentiment_bar(order_fact: pd.DataFrame) -> go.Figure:
+    """Build a stacked monthly sentiment distribution chart."""
+    if order_fact.empty:
+        sentiment = pd.DataFrame(
+            columns=["purchase_month", "sentiment_bucket", "review_count"]
+        )
+    else:
+        fact = order_fact.copy()
+        fact["purchase_month"] = pd.to_datetime(
+            fact["purchase_month"].fillna(
+                pd.to_datetime(
+                    fact["order_purchase_timestamp"],
+                    errors="coerce",
+                ).dt.to_period("M").astype("string")
+            ),
+            errors="coerce",
+        )
+        sentiment = (
+            fact.dropna(subset=["purchase_month", "sentiment_bucket"])
+            .groupby(["purchase_month", "sentiment_bucket"], as_index=False)
+            .agg(review_count=("order_id", "nunique"))
+        )
+
+    fig = px.bar(
+        sentiment,
+        x="purchase_month",
+        y="review_count",
+        color="sentiment_bucket",
+        barmode="stack",
+        category_orders={
+            "sentiment_bucket": ["negative", "neutral", "positive"],
+        },
+        color_discrete_map={
+            "negative": "#d62728",
+            "neutral": "#ffbf00",
+            "positive": "#2ca02c",
+        },
+        hover_data={"review_count": True, "sentiment_bucket": True},
+        labels={
+            "purchase_month": "Purchase Month",
+            "review_count": "Reviewed Orders",
+            "sentiment_bucket": "Sentiment",
+        },
+        title="Monthly Sentiment Distribution",
+    )
+    fig.update_layout(height=420, margin={"l": 20, "r": 20, "t": 60, "b": 20})
+    return fig
+
+
+def build_performance_decay_chart(monthly_metrics: pd.DataFrame) -> go.Figure:
+    """Show sellers with the largest drop from first to latest monthly trust score."""
+    ordered = monthly_metrics.sort_values(["seller_id", "purchase_month"])
+    first_last = (
+        ordered.groupby("seller_id")
+        .agg(
+            first_month=("purchase_month", "first"),
+            latest_month=("purchase_month", "last"),
+            first_trust_score=("trust_score", "first"),
+            latest_trust_score=("trust_score", "last"),
+            observed_months=("purchase_month", "nunique"),
+        )
+        .reset_index()
+    )
+    first_last["trust_score_change"] = (
+        first_last["latest_trust_score"] - first_last["first_trust_score"]
+    )
+    declining = (
+        first_last[first_last["observed_months"] >= 2]
+        .sort_values("trust_score_change")
+        .head(10)
+    )
+
+    fig = px.bar(
+        declining,
+        x="trust_score_change",
+        y="seller_id",
+        orientation="h",
+        color="trust_score_change",
+        color_continuous_scale="Reds_r",
+        hover_data={
+            "first_month": True,
+            "latest_month": True,
+            "first_trust_score": ":.2f",
+            "latest_trust_score": ":.2f",
+            "observed_months": True,
+        },
+        labels={
+            "seller_id": "Seller",
+            "trust_score_change": "Trust Score Change",
+            "first_month": "First Month",
+            "latest_month": "Latest Month",
+            "first_trust_score": "First Trust Score",
+            "latest_trust_score": "Latest Trust Score",
+            "observed_months": "Observed Months",
+        },
+        title="Seller Performance Decay",
+    )
+    fig.update_layout(height=420, margin={"l": 20, "r": 20, "t": 60, "b": 20})
+    return fig
