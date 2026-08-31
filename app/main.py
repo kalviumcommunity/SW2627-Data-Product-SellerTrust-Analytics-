@@ -1,6 +1,13 @@
 import streamlit as st
 
+from app.filters import RISK_TIERS, get_category_options, query_seller_metrics
 from app.overview import build_overview_kpis, load_seller_metrics
+from app.signals import (
+    build_cohort_comparison,
+    build_correlation_heatmap,
+    build_return_rate_scatter,
+    prepare_signal_metrics,
+)
 
 
 st.set_page_config(
@@ -85,11 +92,38 @@ with overview_tab:
 
 with signals_tab:
     st.subheader("Trust vs. Behaviour Signals")
-    st.info(
-        "Cohort comparison table (high-trust vs low-trust sellers), "
-        "trust-score trend line, return-rate-vs-trust-score scatter plot, "
-        "and behaviour-correlation bar chart will be added here."
-    )
+    if filtered_seller_metrics is None:
+        st.warning(
+            "Load data/trust_analytics.db to compare seller behaviour signals."
+        )
+    else:
+        signal_metrics = prepare_signal_metrics(filtered_seller_metrics)
+        if signal_metrics.empty:
+            st.info("No eligible sellers match the current filters.")
+        else:
+            st.caption(
+                "Return Rate uses the PRD's cancellation proxy. "
+                "Use this section to compare trust score against delivery, review, "
+                "and cancellation behaviour."
+            )
+            scatter_col, heatmap_col = st.columns(2)
+            with scatter_col:
+                st.plotly_chart(
+                    build_return_rate_scatter(signal_metrics),
+                    use_container_width=True,
+                )
+            with heatmap_col:
+                st.plotly_chart(
+                    build_correlation_heatmap(signal_metrics),
+                    use_container_width=True,
+                )
+
+            st.markdown("#### High-Trust vs Low-Trust Cohorts")
+            st.dataframe(
+                build_cohort_comparison(signal_metrics),
+                hide_index=True,
+                use_container_width=True,
+            )
 
 with scorecard_tab:
     st.subheader("Seller Scorecard")
