@@ -49,7 +49,7 @@ def _build_evidence(row: pd.Series) -> list[str]:
         evidence.append(f"Avg response time is {row['average_response_time_hours']:.0f}h (slow)")
 
     anomaly_count = row.get("anomaly_count", 0)
-    if anomaly_count >= 3:
+    if anomaly_count >= ESCALATE_ANOMALY_COUNT:
         evidence.append(f"{anomaly_count} metrics flagged as anomalous")
     elif anomaly_count > 0:
         evidence.append(f"{anomaly_count} metric(s) flagged as anomalous")
