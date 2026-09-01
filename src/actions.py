@@ -109,9 +109,10 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
         - evidence (list of strings)
         - anomaly_count
     """
-    scored = calculate_trust_score(seller_metrics)
-    anomalies = detect_anomalies(seller_metrics)
-
+    prepared = seller_metrics.copy()
+    prepared["eligible_for_risk_score"] = prepared["eligible_for_risk_score"].astype(bool)
+    scored = calculate_trust_score(prepared)
+    anomalies = detect_anomalies(prepared)
     merged = scored.merge(
         anomalies[["seller_id", "is_anomaly", "anomaly_count", "anomalous_metrics"]],
         on="seller_id",
