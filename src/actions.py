@@ -124,7 +124,7 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
 
     merged["risk_tier"] = pd.cut(
         merged["trust_score"],
-        bins=[-0.01, 45, 65, 80, 100],
+        bins=[-0.01, 45, 60, 75, 100],
         labels=["High-Risk", "Return-Prone", "Inconsistent", "Reliable"],
     ).astype("string")
     merged.loc[merged["trust_score"].isna(), "risk_tier"] = "Insufficient Data"
