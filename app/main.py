@@ -2,6 +2,7 @@ import streamlit as st
 
 from app.filters import RISK_TIERS, get_category_options, query_seller_metrics
 from app.overview import build_overview_kpis, load_seller_metrics
+from app.scorecard import add_alert_badges, build_anomaly_detail_rows
 from app.signals import (
     build_cohort_comparison,
     build_correlation_heatmap,
@@ -169,12 +170,14 @@ with scorecard_tab:
     elif filtered_seller_metrics.empty:
         st.info("No sellers match the selected filters.")
     else:
+        scorecard_metrics = add_alert_badges(filtered_seller_metrics)
         st.caption(
-            f"{len(filtered_seller_metrics):,} sellers match the selected filters."
+            f"{len(scorecard_metrics):,} sellers match the selected filters."
         )
         st.dataframe(
-            filtered_seller_metrics[
+            scorecard_metrics[
                 [
+                    "alert_badge",
                     "seller_id",
                     "risk_tier",
                     "trust_score",
@@ -188,6 +191,26 @@ with scorecard_tab:
             hide_index=True,
             use_container_width=True,
         )
+        try:
+            scorecard_order_fact = load_seller_order_fact(scorecard_metrics["seller_id"])
+        except FileNotFoundError:
+            scorecard_order_fact = None
+        anomaly_details = build_anomaly_detail_rows(
+            scorecard_metrics,
+            scorecard_order_fact,
+        )
+        if anomaly_details.empty:
+            st.success("No anomaly spikes detected for the selected sellers.")
+        else:
+            with st.expander(
+                f"Anomaly details ({len(anomaly_details):,} flagged signals)",
+                expanded=False,
+            ):
+                st.dataframe(
+                    anomaly_details,
+                    hide_index=True,
+                    use_container_width=True,
+                )
 
 with segments_tab:
     st.subheader("Behaviour Segments")
