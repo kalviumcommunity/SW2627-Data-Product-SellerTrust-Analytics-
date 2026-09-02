@@ -1,5 +1,6 @@
 import streamlit as st
 
+from app.actions import build_action_cards, format_evidence_bullets
 from app.filters import RISK_TIERS, get_category_options, query_seller_metrics
 from app.overview import build_overview_kpis, load_seller_metrics
 from app.scorecard import add_alert_badges, build_anomaly_detail_rows
@@ -222,8 +223,38 @@ with segments_tab:
 
 with actions_tab:
     st.subheader("Trust-Risk Actions")
-    st.info(
-        "Action cards per flagged seller with recommended tier "
-        "(Escalate / Coach / Monitor) and supporting evidence "
-        "will be added here."
-    )
+    if filtered_seller_metrics is None:
+        st.warning(
+            "Load data/trust_analytics.db to generate seller action recommendations."
+        )
+    elif filtered_seller_metrics.empty:
+        st.info("No sellers match the selected filters.")
+    else:
+        action_cards = build_action_cards(filtered_seller_metrics)
+        if action_cards.empty:
+            st.success("No sellers currently need Escalate, Coach, or Monitor action.")
+        else:
+            st.caption(
+                f"{len(action_cards):,} flagged sellers need a recommended action."
+            )
+            for _, seller in action_cards.head(20).iterrows():
+                with st.container(border=True):
+                    header_col, score_col = st.columns([3, 1])
+                    with header_col:
+                        st.markdown(
+                            f"### {seller['action_badge']} · Seller `{seller['seller_id']}`"
+                        )
+                        st.caption(
+                            f"{seller['severity_label']} | Risk tier: {seller['risk_tier']}"
+                        )
+                    with score_col:
+                        st.metric("Trust Score", f"{seller['trust_score']:.1f}")
+
+                    st.markdown(
+                        "<div style='height: 6px; border-radius: 4px; "
+                        f"background: {seller['severity_color']};'></div>",
+                        unsafe_allow_html=True,
+                    )
+                    st.write("Supporting evidence")
+                    for evidence in format_evidence_bullets(seller["evidence"]):
+                        st.markdown(f"- {evidence}")
