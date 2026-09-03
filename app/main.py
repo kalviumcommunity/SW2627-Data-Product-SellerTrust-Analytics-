@@ -4,6 +4,7 @@ from app.actions import build_action_cards, format_evidence_bullets
 from app.filters import RISK_TIERS, get_category_options, query_seller_metrics
 from app.overview import build_overview_kpis, load_seller_metrics
 from app.scorecard import add_alert_badges, build_anomaly_detail_rows
+from app.segments import build_segment_composition_chart, build_segment_summary
 from app.signals import (
     build_cohort_comparison,
     build_correlation_heatmap,
@@ -215,11 +216,26 @@ with scorecard_tab:
 
 with segments_tab:
     st.subheader("Behaviour Segments")
-    st.info(
-        "Portfolio view grouping sellers into 4 tiers "
-        "(Reliable / Inconsistent / Return-Prone / High-Risk) with "
-        "a stacked bar showing tier composition will be added here."
-    )
+    if filtered_seller_metrics is None:
+        st.warning(
+            "Load data/trust_analytics.db to view seller behaviour segments."
+        )
+    elif filtered_seller_metrics.empty:
+        st.info("No sellers match the selected filters.")
+    else:
+        st.caption(
+            "Portfolio view of sellers grouped into Reliable, Inconsistent, "
+            "Return-Prone, and High-Risk behaviour tiers."
+        )
+        st.plotly_chart(
+            build_segment_composition_chart(filtered_seller_metrics),
+            use_container_width=True,
+        )
+        st.dataframe(
+            build_segment_summary(filtered_seller_metrics),
+            hide_index=True,
+            use_container_width=True,
+        )
 
 with actions_tab:
     st.subheader("Trust-Risk Actions")
