@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from src.trust_score import calculate_trust_score
-from src.anomaly_detection import detect_anomalies
+from src.anomaly_detection import compute_seller_anomalies
 
 
 ACTION_ESCALATE = "Escalate"
@@ -112,15 +112,15 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
     prepared = seller_metrics.copy()
     prepared["eligible_for_risk_score"] = prepared["eligible_for_risk_score"].astype(bool)
     scored = calculate_trust_score(prepared)
-    anomalies = detect_anomalies(prepared)
+    anomalies = compute_seller_anomalies(prepared)
     merged = scored.merge(
-        anomalies[["seller_id", "is_anomaly", "anomaly_count", "anomalous_metrics"]],
+        anomalies[["seller_id", "any_anomaly", "anomaly_count"]],
         on="seller_id",
         how="left",
         suffixes=("", "_anomaly"),
     )
     merged["anomaly_count"] = merged["anomaly_count"].fillna(0).astype(int)
-    merged["is_anomaly"] = merged["is_anomaly"].fillna(False).astype(bool)
+    merged["is_anomaly"] = merged["any_anomaly"].fillna(False).astype(bool)
 
     merged["risk_tier"] = pd.cut(
         merged["trust_score"],

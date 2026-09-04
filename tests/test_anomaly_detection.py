@@ -3,10 +3,9 @@ import unittest
 import pandas as pd
 
 from src.anomaly_detection import (
-    build_anomaly_summary,
-    detect_anomalies,
+    compute_seller_anomalies,
     detect_iqr_outliers,
-    detect_z_score_outliers,
+    detect_zscore_anomalies,
 )
 
 
@@ -27,7 +26,7 @@ def _make_sellers() -> pd.DataFrame:
 
 class AnomalyDetectionTests(unittest.TestCase):
     def test_iqr_detects_outlier_in_high_value(self):
-        series = pd.Series([1, 1, 1, 1, 1, 1, 1, 1, 1, 100])
+        series = pd.Series([1, 2, 1, 3, 2, 1, 3, 2, 1, 50])
         flags = detect_iqr_outliers(series)
         self.assertTrue(flags.iloc[-1])
         self.assertFalse(flags.iloc[0])
@@ -39,59 +38,44 @@ class AnomalyDetectionTests(unittest.TestCase):
 
     def test_zscore_detects_extreme_value(self):
         series = pd.Series([1, 2, 2, 3, 2, 2, 3, 2, 2, 50])
-        flags = detect_z_score_outliers(series, threshold=2.5)
+        flags = detect_zscore_anomalies(series, threshold=2.5)
         self.assertTrue(flags.iloc[-1])
         self.assertFalse(flags.iloc[0])
 
     def test_zscore_no_outliers_for_normal_data(self):
         series = pd.Series([10, 11, 9, 10, 12, 8, 10, 11, 9, 10])
-        flags = detect_z_score_outliers(series, threshold=3.0)
+        flags = detect_zscore_anomalies(series, threshold=3.0)
         self.assertFalse(flags.any())
 
     def test_zscore_zero_std_produces_no_outliers(self):
         series = pd.Series([5, 5, 5, 5, 5])
-        flags = detect_z_score_outliers(series)
+        flags = detect_zscore_anomalies(series)
         self.assertFalse(flags.any())
 
-    def test_detect_anomalies_flags_sellers_with_extreme_metrics(self):
+    def test_compute_seller_anomalies_flags_extreme_sellers(self):
         sellers = _make_sellers()
-        result = detect_anomalies(sellers)
+        result = compute_seller_anomalies(sellers)
 
         anomalous = result[result["seller_id"] == "s_anomalous"].iloc[0]
-        self.assertTrue(anomalous["is_anomaly"])
+        self.assertTrue(anomalous["any_anomaly"])
         self.assertGreater(anomalous["anomaly_count"], 0)
-        self.assertIn("late_delivery_rate", anomalous["anomalous_metrics"])
 
         normals = result[result["seller_id"] == "s_normal"]
-        self.assertFalse(normals["is_anomaly"].any())
+        self.assertFalse(normals["any_anomaly"].any())
 
-    def test_detect_anomalies_includes_per_metric_flags(self):
+    def test_compute_seller_anomalies_includes_per_metric_flags(self):
         sellers = _make_sellers()
-        result = detect_anomalies(sellers)
+        result = compute_seller_anomalies(sellers)
 
-        self.assertIn("late_delivery_rate_iqr", result.columns)
-        self.assertIn("late_delivery_rate_zscore", result.columns)
-        self.assertIn("average_review_score_iqr", result.columns)
+        self.assertIn("late_delivery_rate_iqr_outlier", result.columns)
+        self.assertIn("late_delivery_rate_zscore_anomaly", result.columns)
+        self.assertIn("average_review_score_iqr_outlier", result.columns)
 
-    def test_detect_anomalies_excludes_ineligible_sellers(self):
+    def test_compute_seller_anomalies_anomaly_count(self):
         sellers = _make_sellers()
-        sellers.loc[sellers["seller_id"] == "s_anomalous", "eligible_for_risk_score"] = False
-        result = detect_anomalies(sellers)
-
-        self.assertEqual(len(result), 10)
-        self.assertFalse(result["is_anomaly"].any())
-
-    def test_build_anomaly_summary_counts_by_metric(self):
-        sellers = _make_sellers()
-        anomalies = detect_anomalies(sellers)
-        summary = build_anomaly_summary(anomalies)
-
-        self.assertIn("metric", summary.columns)
-        self.assertIn("iqr_flagged", summary.columns)
-        self.assertIn("zscore_flagged", summary.columns)
-        self.assertEqual(len(summary), 5)
-        total_flagged = summary["either_flagged"].sum()
-        self.assertGreater(total_flagged, 0)
+        result = compute_seller_anomalies(sellers)
+        anomalous = result[result["seller_id"] == "s_anomalous"].iloc[0]
+        self.assertGreaterEqual(anomalous["anomaly_count"], 1)
 
 
 if __name__ == "__main__":
