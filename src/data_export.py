@@ -7,7 +7,6 @@ from pathlib import Path
 import pandas as pd
 
 from src.trust_score import calculate_trust_score
-from src.anomaly_detection import detect_anomalies
 from src.actions import recommend_actions
 from src.sql_loader import load_to_sql, DEFAULT_DB_PATH
 
