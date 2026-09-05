@@ -5,9 +5,9 @@ import unittest
 from pathlib import Path
 
 import pandas as pd
+from sample_olist_data import write_sample_raw_files
 
 from src.pipeline_cache import load_cached_csv, profile_pipeline, run_pipeline_cached
-from sample_olist_data import write_sample_raw_files
 
 
 class LoadCachedCsvTests(unittest.TestCase):

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import MutableMapping
 
-
 FILTER_DEFAULTS = {
     "seller_search": "",
     "selected_risk_tier": "All",
