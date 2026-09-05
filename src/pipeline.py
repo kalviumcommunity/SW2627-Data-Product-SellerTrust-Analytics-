@@ -119,15 +119,35 @@ def build_seller_order_fact(cleaned: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 def build_seller_metrics(seller_orders: pd.DataFrame) -> pd.DataFrame:
     """Produce seller-level v1 metrics using the PRD's locked proxy definitions."""
+    # Late delivery rate: use delivered orders with valid dates as denominator (industry standard)
+    # is_late_delivery is True only for delivered orders with valid dates that are late
+    # For cancelled/pending orders, is_late_delivery is NaN (excluded from mean)
+    # But we need explicit denominator: delivered orders with valid delivery dates
+    delivered_with_dates = seller_orders.dropna(subset=["order_delivered_customer_date", "order_estimated_delivery_date"])
+    delivered_with_dates = delivered_with_dates[delivered_with_dates["order_status"] == "delivered"]
+
+    late_rates = delivered_with_dates.groupby("seller_id").apply(
+        lambda g: (g["is_late_delivery"] == True).sum() / len(g) if len(g) > 0 else 0.0
+    ).rename("late_delivery_rate")
+
+    avg_delays = delivered_with_dates.groupby("seller_id")["delivery_delay_days"].mean().rename("average_delivery_delay_days")
+
     metrics = seller_orders.groupby("seller_id", as_index=False).agg(
         total_orders=("order_id", "nunique"),
         cancelled_orders=("order_status", lambda values: int((values == "canceled").sum())),
-        late_delivery_rate=("is_late_delivery", "mean"),
-        average_delivery_delay_days=("delivery_delay_days", "mean"),
         average_review_score=("review_score", "mean"),
         negative_review_rate=("review_score", lambda s: float(s.dropna().le(2).mean()) if s.notna().any() else 0.0),
         average_response_time_hours=("response_time_hours", "mean"),
     )
+
+    # Merge corrected delivery metrics
+    metrics = metrics.merge(late_rates.reset_index(), on="seller_id", how="left")
+    metrics = metrics.merge(avg_delays.reset_index(), on="seller_id", how="left")
+
+    # Fill NaN for sellers with no delivered orders with valid dates
+    metrics["late_delivery_rate"] = metrics["late_delivery_rate"].fillna(0.0)
+    metrics["average_delivery_delay_days"] = metrics["average_delivery_delay_days"].fillna(0.0)
+
     metrics["cancellation_rate_proxy"] = metrics["cancelled_orders"] / metrics["total_orders"]
     metrics["eligible_for_risk_score"] = metrics["total_orders"] >= 5
     return metrics
