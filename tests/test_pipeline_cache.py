@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.pipeline_cache import load_cached_csv, profile_pipeline, run_pipeline_cached
+from sample_olist_data import write_sample_raw_files
 
 
 class LoadCachedCsvTests(unittest.TestCase):
@@ -48,20 +49,32 @@ class LoadCachedCsvTests(unittest.TestCase):
 
 class ProfilePipelineTests(unittest.TestCase):
     def test_profile_returns_string(self):
-        result = profile_pipeline("data/raw", "tmp_profile_test", top_n=5)
-        self.assertIsInstance(result, str)
-        self.assertIn("function calls", result)
-        shutil.rmtree("tmp_profile_test", ignore_errors=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            raw_dir = tmp_path / "raw"
+            output_dir = tmp_path / "processed"
+            write_sample_raw_files(raw_dir)
+
+            result = profile_pipeline(str(raw_dir), str(output_dir), top_n=5)
+
+            self.assertIsInstance(result, str)
+            self.assertIn("function calls", result)
 
 
 class RunPipelineCachedTests(unittest.TestCase):
     def test_cached_run_returns_same_output(self):
-        result1 = run_pipeline_cached("data/raw", "tmp_cached_pipeline")
-        result2 = run_pipeline_cached("data/raw", "tmp_cached_pipeline")
-        self.assertIs(result1, result2)
-        self.assertIn("seller_order_fact", result1)
-        self.assertIn("seller_metrics", result1)
-        shutil.rmtree("tmp_cached_pipeline", ignore_errors=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            raw_dir = tmp_path / "raw"
+            output_dir = tmp_path / "processed"
+            write_sample_raw_files(raw_dir)
+
+            result1 = run_pipeline_cached(str(raw_dir), str(output_dir))
+            result2 = run_pipeline_cached(str(raw_dir), str(output_dir))
+
+            self.assertIs(result1, result2)
+            self.assertIn("seller_order_fact", result1)
+            self.assertIn("seller_metrics", result1)
 
 
 if __name__ == "__main__":
