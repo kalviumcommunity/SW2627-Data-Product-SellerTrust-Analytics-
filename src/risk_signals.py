@@ -36,10 +36,7 @@ def decompose_risk_signals(seller_metrics: pd.DataFrame) -> pd.DataFrame:
     negative_review_contribution = (WEIGHTS["negative_review_score"] * negative_review_raw).round(2)
 
     trust_score = (
-        delivery_contribution
-        + review_contribution
-        + cancellation_contribution
-        + negative_review_contribution
+        delivery_contribution + review_contribution + cancellation_contribution + negative_review_contribution
     ).round(2)
 
     signal_raw = pd.DataFrame(

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import pandas as pd
 
+import pandas as pd
 
 ORDER_DATE_COLUMNS = (
     "order_purchase_timestamp",
@@ -61,9 +61,7 @@ def add_delivery_features(orders: pd.DataFrame) -> pd.DataFrame:
     return enriched
 
 
-def flag_iqr_outliers(
-    frame: pd.DataFrame, column: str, *, multiplier: float = 1.5
-) -> pd.DataFrame:
+def flag_iqr_outliers(frame: pd.DataFrame, column: str, *, multiplier: float = 1.5) -> pd.DataFrame:
     """Flag, but do not remove, IQR outliers in a numeric column.
 
     Flags preserve unusual yet valid seller behaviour for later investigation.

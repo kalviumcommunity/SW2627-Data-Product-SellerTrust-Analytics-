@@ -6,7 +6,6 @@ import pandas as pd
 
 from src.trust_score import calculate_trust_score
 
-
 DEFAULT_SELLER_METRICS_PATH = Path("data/processed/seller_metrics.csv")
 AT_RISK_TRUST_SCORE_THRESHOLD = 60.0
 
@@ -42,7 +41,5 @@ def build_overview_kpis(metrics: pd.DataFrame) -> dict[str, float | int]:
         "avg_trust_score": round(float(eligible["trust_score"].mean()), 1),
         "return_rate_pct": round(float(eligible["cancellation_rate_proxy"].mean() * 100), 1),
         "negative_sentiment_pct": round(float(eligible["negative_review_rate"].mean() * 100), 1),
-        "at_risk_sellers_count": int(
-            eligible["trust_score"].lt(AT_RISK_TRUST_SCORE_THRESHOLD).sum()
-        ),
+        "at_risk_sellers_count": int(eligible["trust_score"].lt(AT_RISK_TRUST_SCORE_THRESHOLD).sum()),
     }

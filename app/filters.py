@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
 import pandas as pd
 
 from src.sql_loader import DEFAULT_DB_PATH
 from src.trust_score import calculate_trust_score
-
 
 RISK_TIERS = ["All", "Reliable", "Inconsistent", "Return-Prone", "High-Risk"]
 

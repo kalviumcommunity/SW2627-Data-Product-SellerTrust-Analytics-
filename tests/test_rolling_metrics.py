@@ -13,7 +13,12 @@ def _make_order_fact() -> pd.DataFrame:
             "order_status": ["delivered", "delivered", "canceled", "delivered", "delivered", "delivered"],
             "purchase_month": ["2024-01", "2024-01", "2024-02", "2024-02", "2024-03", "2024-01"],
             "order_purchase_timestamp": [
-                "2024-01-05", "2024-01-15", "2024-02-10", "2024-02-20", "2024-03-10", "2024-01-12",
+                "2024-01-05",
+                "2024-01-15",
+                "2024-02-10",
+                "2024-02-20",
+                "2024-03-10",
+                "2024-01-12",
             ],
             "review_score": [5, 4, 2, 3, 5, 4],
             "is_late_delivery": [0, 0, 1, 0, 0, 0],

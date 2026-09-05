@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -10,7 +10,6 @@ import plotly.graph_objects as go
 from app.overview import prepare_seller_metrics
 from src.sql_loader import DEFAULT_DB_PATH
 from src.trust_score import calculate_trust_score
-
 
 RISK_SIGNAL_COLUMNS = [
     "cancellation_rate_proxy",
@@ -38,9 +37,7 @@ def prepare_signal_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
     prepared = prepare_seller_metrics(metrics)
     eligible_flag = prepared["eligible_for_risk_score"]
     if not pd.api.types.is_bool_dtype(eligible_flag):
-        eligible_flag = (
-            eligible_flag.astype("string").str.lower().isin(["true", "1", "yes"])
-        )
+        eligible_flag = eligible_flag.astype("string").str.lower().isin(["true", "1", "yes"])
     eligible = prepared[eligible_flag].copy()
     for column in RISK_SIGNAL_COLUMNS:
         if column in eligible.columns:
@@ -87,9 +84,7 @@ def build_return_rate_scatter(metrics: pd.DataFrame) -> go.Figure:
 
 def build_correlation_heatmap(metrics: pd.DataFrame) -> go.Figure:
     """Build a Plotly heatmap showing correlation between trust risk signals."""
-    available_columns = [
-        column for column in RISK_SIGNAL_COLUMNS if column in metrics.columns
-    ]
+    available_columns = [column for column in RISK_SIGNAL_COLUMNS if column in metrics.columns]
     correlations = metrics[available_columns].corr(numeric_only=True)
 
     fig = px.imshow(
@@ -174,15 +169,13 @@ def prepare_monthly_seller_metrics(order_fact: pd.DataFrame) -> pd.DataFrame:
         pd.to_datetime(
             fact["order_purchase_timestamp"],
             errors="coerce",
-        ).dt.to_period("M").astype("string")
+        )
+        .dt.to_period("M")
+        .astype("string")
     )
     fact["review_score"] = pd.to_numeric(fact["review_score"], errors="coerce")
-    fact["is_late_delivery"] = pd.to_numeric(
-        fact["is_late_delivery"], errors="coerce"
-    ).fillna(0)
-    fact["response_time_hours"] = pd.to_numeric(
-        fact["response_time_hours"], errors="coerce"
-    )
+    fact["is_late_delivery"] = pd.to_numeric(fact["is_late_delivery"], errors="coerce").fillna(0)
+    fact["response_time_hours"] = pd.to_numeric(fact["response_time_hours"], errors="coerce")
 
     monthly = fact.groupby(["seller_id", "purchase_month"], as_index=False).agg(
         total_orders=("order_id", "nunique"),
@@ -195,15 +188,11 @@ def prepare_monthly_seller_metrics(order_fact: pd.DataFrame) -> pd.DataFrame:
         average_review_score=("review_score", "mean"),
         negative_review_rate=(
             "review_score",
-            lambda values: float(values.dropna().le(2).mean())
-            if values.notna().any()
-            else 0.0,
+            lambda values: float(values.dropna().le(2).mean()) if values.notna().any() else 0.0,
         ),
         average_response_time_hours=("response_time_hours", "mean"),
     )
-    monthly["cancellation_rate_proxy"] = (
-        monthly["cancelled_orders"] / monthly["total_orders"]
-    )
+    monthly["cancellation_rate_proxy"] = monthly["cancelled_orders"] / monthly["total_orders"]
     monthly["eligible_for_risk_score"] = monthly["total_orders"] >= 1
     scored = calculate_trust_score(monthly)
     scored["purchase_month"] = pd.to_datetime(
@@ -245,9 +234,7 @@ def build_trust_score_trend(monthly_metrics: pd.DataFrame) -> go.Figure:
 def build_monthly_sentiment_bar(order_fact: pd.DataFrame) -> go.Figure:
     """Build a stacked monthly sentiment distribution chart."""
     if order_fact.empty:
-        sentiment = pd.DataFrame(
-            columns=["purchase_month", "sentiment_bucket", "review_count"]
-        )
+        sentiment = pd.DataFrame(columns=["purchase_month", "sentiment_bucket", "review_count"])
     else:
         fact = order_fact.copy()
         fact["purchase_month"] = pd.to_datetime(
@@ -255,7 +242,9 @@ def build_monthly_sentiment_bar(order_fact: pd.DataFrame) -> go.Figure:
                 pd.to_datetime(
                     fact["order_purchase_timestamp"],
                     errors="coerce",
-                ).dt.to_period("M").astype("string")
+                )
+                .dt.to_period("M")
+                .astype("string")
             ),
             errors="coerce",
         )
@@ -305,14 +294,8 @@ def build_performance_decay_chart(monthly_metrics: pd.DataFrame) -> go.Figure:
         )
         .reset_index()
     )
-    first_last["trust_score_change"] = (
-        first_last["latest_trust_score"] - first_last["first_trust_score"]
-    )
-    declining = (
-        first_last[first_last["observed_months"] >= 2]
-        .sort_values("trust_score_change")
-        .head(10)
-    )
+    first_last["trust_score_change"] = first_last["latest_trust_score"] - first_last["first_trust_score"]
+    declining = first_last[first_last["observed_months"] >= 2].sort_values("trust_score_change").head(10)
 
     fig = px.bar(
         declining,

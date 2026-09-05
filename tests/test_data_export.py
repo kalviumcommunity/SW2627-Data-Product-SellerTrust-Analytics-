@@ -5,8 +5,8 @@ from tempfile import TemporaryDirectory
 import pandas as pd
 
 from src.data_export import (
-    export_seller_report,
     export_filtered_report,
+    export_seller_report,
     full_refresh,
 )
 
@@ -88,13 +88,15 @@ class DataExportTests(unittest.TestCase):
         path.parent.rmdir()
 
     def test_export_filtered_report_by_tier(self):
-        metrics = pd.concat([
-            _make_seller(seller_id="s_good", late_delivery_rate=0.0, average_review_score=4.8),
-            _make_seller(seller_id="s_bad", late_delivery_rate=0.9, average_review_score=1.2, negative_review_rate=0.9),
-        ]).reset_index(drop=True)
-        path = export_filtered_report(
-            metrics, output_dir=Path("tmp_test_export"), risk_tier="low-risk"
-        )
+        metrics = pd.concat(
+            [
+                _make_seller(seller_id="s_good", late_delivery_rate=0.0, average_review_score=4.8),
+                _make_seller(
+                    seller_id="s_bad", late_delivery_rate=0.9, average_review_score=1.2, negative_review_rate=0.9
+                ),
+            ]
+        ).reset_index(drop=True)
+        path = export_filtered_report(metrics, output_dir=Path("tmp_test_export"), risk_tier="low-risk")
         self.assertTrue(path.exists())
         df = pd.read_csv(path)
         for tier in df["risk_tier"]:
@@ -105,8 +107,7 @@ class DataExportTests(unittest.TestCase):
     def test_export_filtered_report_by_score_range(self):
         metrics = _make_seller()
         path = export_filtered_report(
-            metrics, output_dir=Path("tmp_test_export"),
-            min_trust_score=0, max_trust_score=100
+            metrics, output_dir=Path("tmp_test_export"), min_trust_score=0, max_trust_score=100
         )
         self.assertTrue(path.exists())
         df = pd.read_csv(path)
@@ -116,9 +117,7 @@ class DataExportTests(unittest.TestCase):
 
     def test_export_filtered_report_empty_when_no_match(self):
         metrics = _make_seller(late_delivery_rate=0.0, average_review_score=4.8)
-        path = export_filtered_report(
-            metrics, output_dir=Path("tmp_test_export"), risk_tier="high-risk"
-        )
+        path = export_filtered_report(metrics, output_dir=Path("tmp_test_export"), risk_tier="high-risk")
         self.assertTrue(path.exists())
         df = pd.read_csv(path)
         self.assertEqual(len(df), 0)

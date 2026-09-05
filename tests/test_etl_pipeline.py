@@ -2,9 +2,7 @@ import shutil
 import unittest
 from pathlib import Path
 
-import pandas as pd
-
-from scripts.etl_pipeline import run_etl, main
+from scripts.etl_pipeline import main, run_etl
 
 
 class EtlPipelineTests(unittest.TestCase):
@@ -73,10 +71,17 @@ class EtlPipelineTests(unittest.TestCase):
         result = main.__wrapped__() if hasattr(main, "__wrapped__") else None
         if result is None:
             import sys
+
             old_argv = sys.argv
-            sys.argv = ["etl_pipeline.py", "--raw-dir", "data/raw",
-                        "--output-dir", str(self.output_dir),
-                        "--db-path", str(self.db_path)]
+            sys.argv = [
+                "etl_pipeline.py",
+                "--raw-dir",
+                "data/raw",
+                "--output-dir",
+                str(self.output_dir),
+                "--db-path",
+                str(self.db_path),
+            ]
             try:
                 result = main()
             finally:

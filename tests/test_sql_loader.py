@@ -1,4 +1,3 @@
-import sqlite3
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -86,9 +85,7 @@ class SQLLoaderTests(unittest.TestCase):
     def test_indexes_are_created(self):
         load_to_sql(self.data_dir, self.db_path)
         conn = get_connection(self.db_path)
-        indexes = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='index'"
-        ).fetchall()
+        indexes = conn.execute("SELECT name FROM sqlite_master WHERE type='index'").fetchall()
         index_names = {row[0] for row in indexes}
         self.assertIn("idx_fact_seller", index_names)
         self.assertIn("idx_fact_order", index_names)

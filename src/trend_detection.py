@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from scipy import stats
 
 
@@ -47,16 +47,18 @@ def compute_seller_review_trends(
         valid_reviews = group.dropna(subset=[score_column])
 
         if len(valid_reviews) < min_orders:
-            results.append({
-                seller_column: seller_id,
-                "n_reviews": len(valid_reviews),
-                "slope": np.nan,
-                "intercept": np.nan,
-                "r_value": np.nan,
-                "p_value": np.nan,
-                "std_err": np.nan,
-                "trend_flag": "insufficient_data",
-            })
+            results.append(
+                {
+                    seller_column: seller_id,
+                    "n_reviews": len(valid_reviews),
+                    "slope": np.nan,
+                    "intercept": np.nan,
+                    "r_value": np.nan,
+                    "p_value": np.nan,
+                    "std_err": np.nan,
+                    "trend_flag": "insufficient_data",
+                }
+            )
             continue
 
         # Perform linear regression: review_score ~ time
@@ -73,16 +75,18 @@ def compute_seller_review_trends(
         else:
             trend_flag = "stable"
 
-        results.append({
-            seller_column: seller_id,
-            "n_reviews": len(valid_reviews),
-            "slope": round(slope, 6),
-            "intercept": round(intercept, 4),
-            "r_value": round(r_value, 4),
-            "p_value": round(p_value, 6),
-            "std_err": round(std_err, 6),
-            "trend_flag": trend_flag,
-        })
+        results.append(
+            {
+                seller_column: seller_id,
+                "n_reviews": len(valid_reviews),
+                "slope": round(slope, 6),
+                "intercept": round(intercept, 4),
+                "r_value": round(r_value, 4),
+                "p_value": round(p_value, 6),
+                "std_err": round(std_err, 6),
+                "trend_flag": trend_flag,
+            }
+        )
 
     return pd.DataFrame(results)
 

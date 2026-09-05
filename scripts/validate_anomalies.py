@@ -15,8 +15,8 @@ def main():
     fact["order_purchase_timestamp"] = pd.to_datetime(fact["order_purchase_timestamp"], errors="coerce")
 
     # Get 10 flagged and 10 non-flagged sellers
-    flagged = anomalies[anomalies["any_anomaly"] == True]["seller_id"].head(10).tolist()
-    non_flagged = anomalies[anomalies["any_anomaly"] == False]["seller_id"].head(10).tolist()
+    flagged = anomalies[anomalies["any_anomaly"]]["seller_id"].head(10).tolist()
+    non_flagged = anomalies[~anomalies["any_anomaly"]]["seller_id"].head(10).tolist()
 
     review_sellers = flagged + non_flagged
 
@@ -54,10 +54,14 @@ def main():
                 print(f"    ANOMALY FLAGS: {', '.join(anomaly_cols)}")
 
         # Recent orders sample
-        recent_orders = seller_fact.nlargest(3, "order_purchase_timestamp")[["order_id", "order_purchase_timestamp", "review_score", "is_late_delivery", "delivery_delay_days"]]
-        print(f"    Recent Orders:")
+        recent_orders = seller_fact.nlargest(3, "order_purchase_timestamp")[
+            ["order_id", "order_purchase_timestamp", "review_score", "is_late_delivery", "delivery_delay_days"]
+        ]
+        print("    Recent Orders:")
         for _, order in recent_orders.iterrows():
-            print(f"      {order['order_id'][:12]}... | {str(order['order_purchase_timestamp'])[:10]} | Score: {order['review_score']} | Late: {order['is_late_delivery']} | Delay: {order['delivery_delay_days']:.1f}")
+            print(
+                f"      {order['order_id'][:12]}... | {str(order['order_purchase_timestamp'])[:10]} | Score: {order['review_score']} | Late: {order['is_late_delivery']} | Delay: {order['delivery_delay_days']:.1f}"
+            )
 
     print("\n" + "=" * 80)
     print("MANUAL REVIEW INSTRUCTIONS:")
