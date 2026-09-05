@@ -88,8 +88,8 @@ EXCLUDE_EARLY_DELIVERY = True  # New: don't flag negative delivery delays
 
 ## Next Steps
 
-- [ ] Implement adjusted thresholds in `src/anomaly_detection.py`
-- [ ] Add `min_orders` parameter to Z-score detection
-- [ ] Add option to exclude early deliveries from anomaly detection
+- [x] Implement adjusted thresholds in `src/anomaly_detection.py`
+- [x] Add `min_orders` parameter to Z-score detection
+- [x] Add option to exclude early deliveries from anomaly detection
 - [ ] Re-run validation with adjusted thresholds
-- [ ] Update `scripts/detect_anomalies.py` with new defaults
+- [x] Update `scripts/detect_anomalies.py` with new defaults
