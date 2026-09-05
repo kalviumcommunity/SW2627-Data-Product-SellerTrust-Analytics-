@@ -1,5 +1,4 @@
 import unittest
-
 import pandas as pd
 
 from src.anomaly_detection import (
