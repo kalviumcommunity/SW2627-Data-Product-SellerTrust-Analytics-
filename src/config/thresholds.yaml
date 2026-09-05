@@ -1,0 +1,31 @@
+# Action thresholds for seller risk tiers
+# Based on industry benchmarks: Amazon, Walmart, eBay (2026) + data distribution analysis
+# All rates are decimal (e.g., 0.025 = 2.5%)
+
+action_tiers:
+  escalate:
+    cancellation_rate_proxy: 0.025    # 2.5% - Amazon suspension threshold
+    negative_review_rate: 0.250       # 25% - above 75th percentile (data-driven)
+    late_delivery_rate: 0.100         # 10% - above 75th percentile (data-driven)
+    average_review_score: 3.5         # Below 3.5 = approaching negative
+
+  coach:
+    cancellation_rate_proxy: 0.0125   # 1.25% - 50% of Amazon threshold
+    negative_review_rate: 0.150       # 15% - around mean (data-driven)
+    late_delivery_rate: 0.050         # 5% - between median and 75th percentile
+    average_review_score: 3.8         # Below 3.8 = below "good"
+
+# Trust score component weights (from trust_score.py)
+trust_score_weights:
+  delivery_performance: 0.30
+  review_quality: 0.30
+  cancellation_score: 0.20
+  negative_review_score: 0.20
+
+# Eligibility
+min_orders_for_risk_score: 5
+
+# Anomaly detection thresholds
+anomaly_detection:
+  zscore_threshold: 3.0
+  iqr_multiplier: 1.5

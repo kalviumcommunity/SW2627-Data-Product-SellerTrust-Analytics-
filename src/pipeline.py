@@ -7,6 +7,8 @@ from pathlib import Path
 import pandas as pd
 
 from src.data_quality import add_delivery_features
+from src.trust_score import calculate_trust_score
+from src.risk_tier import add_risk_tiers
 
 
 REQUIRED_FILES = {
@@ -139,6 +141,8 @@ def run_pipeline(raw_directory: str | Path, output_directory: str | Path) -> dic
     cleaned = clean_sources(sources)
     fact = build_seller_order_fact(cleaned)
     metrics = build_seller_metrics(fact)
+    metrics = calculate_trust_score(metrics)
+    metrics = add_risk_tiers(metrics)
     for name, frame in {"seller_order_fact": fact, "seller_metrics": metrics}.items():
         frame.to_csv(output_path / f"{name}.csv", index=False)
     return {"seller_order_fact": fact, "seller_metrics": metrics}
