@@ -49,8 +49,9 @@ def run_etl(
 
     # Step 2: Trust scoring
     log.info("Step 2/6 — Computing trust scores")
-    from src.trust_score import calculate_trust_score
     import pandas as pd
+
+    from src.trust_score import calculate_trust_score
 
     metrics_path = Path(output_dir) / "seller_metrics.csv"
     metrics = pd.read_csv(metrics_path)
@@ -106,7 +107,9 @@ def run_etl(
 
         for tier in ["High-Risk", "Return-Prone", "Inconsistent", "Reliable"]:
             path = export_filtered_report(
-                scored, output_dir=output_dir, risk_tier=tier,
+                scored,
+                output_dir=output_dir,
+                risk_tier=tier,
                 filename=f"seller_report_{tier.lower().replace('-', '_')}.csv",
             )
             log.info("  Exported %s", path.name)
@@ -119,9 +122,7 @@ def run_etl(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="End-to-end ETL pipeline for Seller Trust Analytics."
-    )
+    parser = argparse.ArgumentParser(description="End-to-end ETL pipeline for Seller Trust Analytics.")
     parser.add_argument("--raw-dir", default="data/raw", help="Raw CSV directory.")
     parser.add_argument("--output-dir", default="data/processed", help="Output directory.")
     parser.add_argument("--db-path", default="data/trust_analytics.db", help="SQLite DB path.")

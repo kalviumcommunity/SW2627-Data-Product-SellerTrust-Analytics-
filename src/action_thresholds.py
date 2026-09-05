@@ -6,15 +6,16 @@ All thresholds can be overridden via config file or environment variables.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
 class EscalateThresholds:
     """Thresholds for ESCALATE tier (immediate action required)."""
+
     return_rate: float = 0.25
     negative_review_rate: float = 0.20
     late_delivery_rate: float = 0.15
@@ -26,6 +27,7 @@ class EscalateThresholds:
 @dataclass
 class CoachThresholds:
     """Thresholds for COACH tier (proactive coaching required)."""
+
     return_rate_min: float = 0.15
     return_rate_max: float = 0.25
     negative_review_rate_min: float = 0.10
@@ -44,6 +46,7 @@ class CoachThresholds:
 @dataclass
 class MonitorThresholds:
     """Thresholds for MONITOR tier (ongoing monitoring)."""
+
     return_rate_min: float = 0.08
     return_rate_max: float = 0.15
     negative_review_rate_min: float = 0.05
@@ -61,6 +64,7 @@ class MonitorThresholds:
 @dataclass
 class HealthyThresholds:
     """Thresholds for HEALTHY tier (no action needed)."""
+
     return_rate_max: float = 0.08
     negative_review_rate_max: float = 0.05
     late_delivery_rate_max: float = 0.04
@@ -72,13 +76,14 @@ class HealthyThresholds:
 @dataclass
 class ActionThresholds:
     """Complete action threshold configuration."""
+
     escalate: EscalateThresholds = field(default_factory=EscalateThresholds)
     coach: CoachThresholds = field(default_factory=CoachThresholds)
     monitor: MonitorThresholds = field(default_factory=MonitorThresholds)
     healthy: HealthyThresholds = field(default_factory=HealthyThresholds)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ActionThresholds":
+    def from_dict(cls, data: dict[str, Any]) -> ActionThresholds:
         """Create ActionThresholds from dictionary (e.g., loaded from JSON)."""
         return cls(
             escalate=EscalateThresholds(**data.get("escalate", {})),
@@ -97,9 +102,9 @@ class ActionThresholds:
         }
 
     @classmethod
-    def load_from_file(cls, path: str | Path) -> "ActionThresholds":
+    def load_from_file(cls, path: str | Path) -> ActionThresholds:
         """Load thresholds from JSON file."""
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
         return cls.from_dict(data)
 
@@ -153,12 +158,14 @@ def assign_action_tier(
 
     # Check ESCALATE (most restrictive first)
     e = thresholds.escalate
-    if (return_rate > e.return_rate or
-        negative_review_rate > e.negative_review_rate or
-        late_delivery_rate > e.late_delivery_rate or
-        cancellation_rate > e.cancellation_rate or
-        trust_score < e.trust_score_max or
-        anomaly_count >= e.anomaly_count_min):
+    if (
+        return_rate > e.return_rate
+        or negative_review_rate > e.negative_review_rate
+        or late_delivery_rate > e.late_delivery_rate
+        or cancellation_rate > e.cancellation_rate
+        or trust_score < e.trust_score_max
+        or anomaly_count >= e.anomaly_count_min
+    ):
         return "escalate"
 
     # Check COACH
@@ -229,4 +236,30 @@ def get_tier_recommendations(tier: str) -> dict[str, Any]:
         },
         "coach": {
             "priority": "HIGH",
-            "ac
+            "actions": [
+                "Weekly performance review",
+                "Provide seller training resources",
+                "Set improvement targets with 60-day deadline",
+                "Bi-weekly metric monitoring",
+            ],
+            "review_frequency": "weekly",
+        },
+        "monitor": {
+            "priority": "MEDIUM",
+            "actions": [
+                "Monthly performance review",
+                "Automated alert on metric degradation",
+                "Quarterly reassessment",
+            ],
+            "review_frequency": "monthly",
+        },
+        "healthy": {
+            "priority": "LOW",
+            "actions": [
+                "Continue standard monitoring",
+                "Eligible for seller perks and promotions",
+            ],
+            "review_frequency": "quarterly",
+        },
+    }
+    return recommendations.get(tier.lower(), recommendations["healthy"])

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.trust_score import calculate_trust_score
 from src.anomaly_detection import compute_seller_anomalies
-
+from src.trust_score import calculate_trust_score
 
 ACTION_ESCALATE = "Escalate"
 ACTION_COACH = "Coach"

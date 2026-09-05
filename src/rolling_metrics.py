@@ -42,9 +42,7 @@ def compute_rolling_metrics(
     fact = order_fact.copy()
     fact["purchase_month"] = pd.to_datetime(
         fact["purchase_month"].fillna(
-            pd.to_datetime(fact["order_purchase_timestamp"], errors="coerce")
-            .dt.to_period("M")
-            .astype("string")
+            pd.to_datetime(fact["order_purchase_timestamp"], errors="coerce").dt.to_period("M").astype("string")
         ),
         errors="coerce",
     )
@@ -52,14 +50,11 @@ def compute_rolling_metrics(
     fact["is_late_delivery"] = pd.to_numeric(fact["is_late_delivery"], errors="coerce").fillna(0)
     fact["is_cancelled"] = fact["order_status"].astype(str).str.lower().eq("canceled").astype(int)
 
-    monthly = (
-        fact.groupby(["seller_id", "purchase_month"], as_index=False)
-        .agg(
-            total_orders=("order_id", "nunique"),
-            cancelled_orders=("is_cancelled", "sum"),
-            late_deliveries=("is_late_delivery", "sum"),
-            avg_review_score=("review_score", "mean"),
-        )
+    monthly = fact.groupby(["seller_id", "purchase_month"], as_index=False).agg(
+        total_orders=("order_id", "nunique"),
+        cancelled_orders=("is_cancelled", "sum"),
+        late_deliveries=("is_late_delivery", "sum"),
+        avg_review_score=("review_score", "mean"),
     )
     monthly["cancellation_rate"] = monthly["cancelled_orders"] / monthly["total_orders"]
     monthly["late_delivery_rate"] = monthly["late_deliveries"] / monthly["total_orders"]

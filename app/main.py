@@ -18,7 +18,6 @@ from app.signals import (
 )
 from app.ui_state import initialise_filter_state, normalise_selected_option
 
-
 st.set_page_config(
     page_title="Seller Trust Analytics Dashboard",
     layout="wide",
@@ -34,9 +33,7 @@ with st.sidebar:
         "Explore seller trust signals using delivery performance, review scores, "
         "cancellation proxies, and risk indicators from the Olist e-commerce data."
     )
-    st.caption(
-        "Use the dashboard tabs to move from marketplace overview to seller-level risk alerts."
-    )
+    st.caption("Use the dashboard tabs to move from marketplace overview to seller-level risk alerts.")
     st.divider()
     seller_search = st.text_input(
         "Seller search",
@@ -108,9 +105,7 @@ with overview_tab:
             seller_metrics = load_seller_metrics()
             overview_kpis = build_overview_kpis(seller_metrics)
         except FileNotFoundError:
-            st.warning(
-                "Generate data/processed/seller_metrics.csv to populate the Trust Overview cards."
-            )
+            st.warning("Generate data/processed/seller_metrics.csv to populate the Trust Overview cards.")
         except (KeyError, TypeError, ValueError) as error:
             st.error(f"Unable to build Trust Overview KPIs from seller_metrics.csv: {error}")
         else:
@@ -136,9 +131,7 @@ with overview_tab:
 with signals_tab:
     st.subheader("Trust vs. Behaviour Signals")
     if filtered_seller_metrics is None:
-        st.warning(
-            "Load data/trust_analytics.db to compare seller behaviour signals."
-        )
+        st.warning("Load data/trust_analytics.db to compare seller behaviour signals.")
     else:
         signal_metrics = prepare_signal_metrics(filtered_seller_metrics)
         if signal_metrics.empty:
@@ -172,9 +165,7 @@ with signals_tab:
                 order_fact = load_seller_order_fact(signal_metrics["seller_id"])
             except FileNotFoundError:
                 order_fact = None
-                st.warning(
-                    "Load data/trust_analytics.db to show seller performance trends."
-                )
+                st.warning("Load data/trust_analytics.db to show seller performance trends.")
 
             if order_fact is not None:
                 monthly_metrics = prepare_monthly_seller_metrics(order_fact)
@@ -201,16 +192,12 @@ with signals_tab:
 with scorecard_tab:
     st.subheader("Seller Scorecard")
     if filtered_seller_metrics is None:
-        st.warning(
-            "Load data/trust_analytics.db to use sidebar filters and view seller metrics."
-        )
+        st.warning("Load data/trust_analytics.db to use sidebar filters and view seller metrics.")
     elif filtered_seller_metrics.empty:
         st.error("No sellers match the selected filters.")
     else:
         scorecard_metrics = add_alert_badges(filtered_seller_metrics)
-        st.caption(
-            f"{len(scorecard_metrics):,} sellers match the selected filters."
-        )
+        st.caption(f"{len(scorecard_metrics):,} sellers match the selected filters.")
         st.dataframe(
             scorecard_metrics[
                 [
@@ -252,9 +239,7 @@ with scorecard_tab:
 with segments_tab:
     st.subheader("Behaviour Segments")
     if filtered_seller_metrics is None:
-        st.warning(
-            "Load data/trust_analytics.db to view seller behaviour segments."
-        )
+        st.warning("Load data/trust_analytics.db to view seller behaviour segments.")
     elif filtered_seller_metrics.empty:
         st.error("No sellers match the selected filters.")
     else:
@@ -275,9 +260,7 @@ with segments_tab:
 with actions_tab:
     st.subheader("Trust-Risk Actions")
     if filtered_seller_metrics is None:
-        st.warning(
-            "Load data/trust_analytics.db to generate seller action recommendations."
-        )
+        st.warning("Load data/trust_analytics.db to generate seller action recommendations.")
     elif filtered_seller_metrics.empty:
         st.error("No sellers match the selected filters.")
     else:
@@ -285,25 +268,18 @@ with actions_tab:
         if action_cards.empty:
             st.success("No sellers currently need Escalate, Coach, or Monitor action.")
         else:
-            st.caption(
-                f"{len(action_cards):,} flagged sellers need a recommended action."
-            )
+            st.caption(f"{len(action_cards):,} flagged sellers need a recommended action.")
             for _, seller in action_cards.head(20).iterrows():
                 with st.container(border=True):
                     header_col, score_col = st.columns([3, 1])
                     with header_col:
-                        st.markdown(
-                            f"### {seller['action_badge']} · Seller `{seller['seller_id']}`"
-                        )
-                        st.caption(
-                            f"{seller['severity_label']} | Risk tier: {seller['risk_tier']}"
-                        )
+                        st.markdown(f"### {seller['action_badge']} · Seller `{seller['seller_id']}`")
+                        st.caption(f"{seller['severity_label']} | Risk tier: {seller['risk_tier']}")
                     with score_col:
                         st.metric("Trust Score", f"{seller['trust_score']:.1f}")
 
                     st.markdown(
-                        "<div style='height: 6px; border-radius: 4px; "
-                        f"background: {seller['severity_color']};'></div>",
+                        f"<div style='height: 6px; border-radius: 4px; background: {seller['severity_color']};'></div>",
                         unsafe_allow_html=True,
                     )
                     st.write("Supporting evidence")

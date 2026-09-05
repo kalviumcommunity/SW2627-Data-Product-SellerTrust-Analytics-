@@ -42,12 +42,10 @@ def add_alert_badges(metrics: pd.DataFrame) -> pd.DataFrame:
     )
     scorecard["any_anomaly"] = scorecard["any_anomaly"].fillna(False).astype(bool)
     scorecard["anomaly_count"] = scorecard["anomaly_count"].fillna(0).astype(int)
-    scorecard["alert_badge"] = scorecard["risk_tier"].map(BADGE_BY_TIER).fillna(
-        "⚪ Unclassified"
-    )
-    scorecard.loc[scorecard["any_anomaly"], "alert_badge"] = (
-        "🔴 Anomaly: " + scorecard.loc[scorecard["any_anomaly"], "risk_tier"].astype(str)
-    )
+    scorecard["alert_badge"] = scorecard["risk_tier"].map(BADGE_BY_TIER).fillna("⚪ Unclassified")
+    scorecard.loc[scorecard["any_anomaly"], "alert_badge"] = "🔴 Anomaly: " + scorecard.loc[
+        scorecard["any_anomaly"], "risk_tier"
+    ].astype(str)
     return scorecard
 
 
@@ -63,24 +61,20 @@ def _seller_monthly_peaks(order_fact: pd.DataFrame, seller_id: str) -> dict[str,
         pd.to_datetime(
             fact["order_purchase_timestamp"],
             errors="coerce",
-        ).dt.to_period("M").astype("string")
+        )
+        .dt.to_period("M")
+        .astype("string")
     )
     fact["review_score"] = pd.to_numeric(fact["review_score"], errors="coerce")
-    fact["is_late_delivery"] = pd.to_numeric(
-        fact["is_late_delivery"], errors="coerce"
-    ).fillna(0)
-    fact["response_time_hours"] = pd.to_numeric(
-        fact["response_time_hours"], errors="coerce"
-    )
+    fact["is_late_delivery"] = pd.to_numeric(fact["is_late_delivery"], errors="coerce").fillna(0)
+    fact["response_time_hours"] = pd.to_numeric(fact["response_time_hours"], errors="coerce")
 
     monthly = fact.groupby("purchase_month", as_index=False).agg(
         late_delivery_rate=("is_late_delivery", "mean"),
         average_review_score=("review_score", "mean"),
         negative_review_rate=(
             "review_score",
-            lambda values: float(values.dropna().le(2).mean())
-            if values.notna().any()
-            else 0.0,
+            lambda values: float(values.dropna().le(2).mean()) if values.notna().any() else 0.0,
         ),
         cancellation_rate_proxy=(
             "order_status",
@@ -110,11 +104,7 @@ def build_anomaly_detail_rows(
 
     for _, seller in scorecard[scorecard["any_anomaly"]].iterrows():
         anomaly_cols = [c for c in scorecard.columns if c.endswith("_anomaly") and c != "any_anomaly"]
-        metrics = [
-            c.replace("_anomaly", "")
-            for c in anomaly_cols
-            if seller.get(c, False)
-        ]
+        metrics = [c.replace("_anomaly", "") for c in anomaly_cols if seller.get(c, False)]
         peaks = _seller_monthly_peaks(history, seller["seller_id"])
         for metric in metrics:
             value = seller.get(metric, pd.NA)

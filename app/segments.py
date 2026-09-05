@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 
 from app.overview import prepare_seller_metrics
 
-
 SEGMENT_ORDER = ["Reliable", "Inconsistent", "Return-Prone", "High-Risk"]
 SEGMENT_COLORS = {
     "Reliable": "#2ca02c",

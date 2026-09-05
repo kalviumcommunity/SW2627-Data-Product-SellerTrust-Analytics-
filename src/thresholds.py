@@ -11,7 +11,6 @@ from collections.abc import Iterable
 
 import pandas as pd
 
-
 RISK_METRICS = (
     "late_delivery_rate",
     "average_review_score",
@@ -77,9 +76,7 @@ def derive_percentile_cutoffs(
     cutoffs: dict[str, dict[str, float]] = {}
     for metric in metrics:
         quantiles = seller_metrics[metric].quantile(percentile_levels)
-        cutoffs[metric] = {
-            str(level): float(quantiles.loc[level]) for level in percentile_levels
-        }
+        cutoffs[metric] = {str(level): float(quantiles.loc[level]) for level in percentile_levels}
     return cutoffs
 
 
@@ -165,7 +162,5 @@ def validate_segmentation_thresholds(
         "is_balanced": is_balanced,
         "min_share": min_share,
         "thresholds": adjusted_thresholds,
-        "tier_shares": {
-            tier: round(float(share), 4) for tier, share in tier_shares.items()
-        },
+        "tier_shares": {tier: round(float(share), 4) for tier, share in tier_shares.items()},
     }

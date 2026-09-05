@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-
 # Weights reflect relative importance of each signal.
 # Delivery performance and review quality are primary trust indicators (30% each).
 # Cancellation and negative review rates are secondary signals (20% each).

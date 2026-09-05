@@ -4,7 +4,6 @@ import argparse
 
 from src.pipeline import run_pipeline
 
-
 parser = argparse.ArgumentParser(description="Build Seller Trust Analytics processed data.")
 parser.add_argument("--raw-dir", default="data/raw", help="Directory containing the five Olist CSVs.")
 parser.add_argument("--output-dir", default="data/processed", help="Directory for generated CSV outputs.")

@@ -6,10 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.trust_score import calculate_trust_score
 from src.actions import recommend_actions
-from src.sql_loader import load_to_sql, DEFAULT_DB_PATH
-
+from src.sql_loader import DEFAULT_DB_PATH, load_to_sql
 
 DEFAULT_OUTPUT_DIR = Path("data/processed")
 
