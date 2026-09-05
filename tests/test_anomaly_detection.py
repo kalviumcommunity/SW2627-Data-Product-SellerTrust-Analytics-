@@ -1,4 +1,5 @@
 import unittest
+
 import pandas as pd
 
 from src.anomaly_detection import (
@@ -6,7 +7,6 @@ from src.anomaly_detection import (
     detect_iqr_outliers,
     detect_zscore_anomalies,
 )
-
 
 _N_NORMAL = 19  # 19 normal + 1 anomalous gives Z≈4.4 at threshold=3.5
 
