@@ -25,10 +25,7 @@ def load_olist_sources(raw_directory: str | Path) -> dict[str, pd.DataFrame]:
     missing = [filename for filename in REQUIRED_FILES.values() if not (raw_path / filename).is_file()]
     if missing:
         raise FileNotFoundError("Missing required raw files: " + ", ".join(missing))
-    return {
-        name: pd.read_csv(raw_path / filename)
-        for name, filename in REQUIRED_FILES.items()
-    }
+    return {name: pd.read_csv(raw_path / filename) for name, filename in REQUIRED_FILES.items()}
 
 
 def profile_frame(frame: pd.DataFrame) -> pd.DataFrame:
@@ -61,15 +58,13 @@ def remove_exact_duplicates(frame: pd.DataFrame) -> pd.DataFrame:
 def clean_sources(sources: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Apply the Day 6–8 cleaning decisions before tables are merged."""
     cleaned = {name: remove_exact_duplicates(frame) for name, frame in sources.items()}
-    cleaned["orders"] = add_delivery_features(
-        normalise_text(cleaned["orders"], ["order_status"])
-    )
+    cleaned["orders"] = add_delivery_features(normalise_text(cleaned["orders"], ["order_status"]))
     cleaned["sellers"] = normalise_text(cleaned["sellers"], ["seller_city", "seller_state"])
     cleaned["products"] = normalise_text(cleaned["products"], ["product_category_name"])
     cleaned["reviews"] = normalise_text(cleaned["reviews"], [])
-    cleaned["reviews"]["review_score"] = pd.to_numeric(
-        cleaned["reviews"]["review_score"], errors="coerce"
-    ).astype("Int64")
+    cleaned["reviews"]["review_score"] = pd.to_numeric(cleaned["reviews"]["review_score"], errors="coerce").astype(
+        "Int64"
+    )
     for column in ("review_creation_date", "review_answer_timestamp"):
         if column in cleaned["reviews"]:
             cleaned["reviews"][column] = pd.to_datetime(cleaned["reviews"][column], errors="coerce")
@@ -101,13 +96,10 @@ def build_seller_order_fact(cleaned: dict[str, pd.DataFrame]) -> pd.DataFrame:
     reviews["response_time_hours"] = (
         reviews["review_answer_timestamp"] - reviews["review_creation_date"]
     ).dt.total_seconds() / 3600
-    review_summary = (
-        reviews.groupby("order_id", as_index=False)
-        .agg(
-            review_score=("review_score", "mean"),
-            review_count=("review_id", "nunique"),
-            response_time_hours=("response_time_hours", "mean"),
-        )
+    review_summary = reviews.groupby("order_id", as_index=False).agg(
+        review_score=("review_score", "mean"),
+        review_count=("review_id", "nunique"),
+        response_time_hours=("response_time_hours", "mean"),
     )
     fact = seller_orders.merge(review_summary, on="order_id", how="left", validate="m:1")
     fact["sentiment_bucket"] = pd.cut(
@@ -122,14 +114,22 @@ def build_seller_metrics(seller_orders: pd.DataFrame) -> pd.DataFrame:
     # is_late_delivery is True only for delivered orders with valid dates that are late
     # For cancelled/pending orders, is_late_delivery is NaN (excluded from mean)
     # But we need explicit denominator: delivered orders with valid delivery dates
-    delivered_with_dates = seller_orders.dropna(subset=["order_delivered_customer_date", "order_estimated_delivery_date"])
+    delivered_with_dates = seller_orders.dropna(
+        subset=["order_delivered_customer_date", "order_estimated_delivery_date"]
+    )
     delivered_with_dates = delivered_with_dates[delivered_with_dates["order_status"] == "delivered"]
 
-    late_rates = delivered_with_dates.groupby("seller_id").apply(
-        lambda g: (g["is_late_delivery"]).sum() / len(g) if len(g) > 0 else 0.0
-    ).rename("late_delivery_rate")
+    late_rates = (
+        delivered_with_dates.groupby("seller_id", group_keys=False)["is_late_delivery"]
+        .apply(lambda s: s.sum() / len(s) if len(s) > 0 else 0.0)
+        .rename("late_delivery_rate")
+    )
 
-    avg_delays = delivered_with_dates.groupby("seller_id")["delivery_delay_days"].mean().rename("average_delivery_delay_days")
+    avg_delays = (
+        delivered_with_dates.groupby("seller_id", group_keys=False)["delivery_delay_days"]
+        .mean()
+        .rename("average_delivery_delay_days")
+    )
 
     metrics = seller_orders.groupby("seller_id", as_index=False).agg(
         total_orders=("order_id", "nunique"),
