@@ -6,6 +6,17 @@ import pandas as pd
 import numpy as np
 
 
+# Metrics to check for anomalies (used by both anomaly detection and scorecard)
+METRICS_TO_CHECK = [
+    "late_delivery_rate",
+    "average_review_score",
+    "cancellation_rate_proxy",
+    "negative_review_rate",
+    "average_delivery_delay_days",
+    "average_response_time_hours",
+]
+
+
 def detect_iqr_outliers(
     series: pd.Series,
     multiplier: float = 1.5,
@@ -59,11 +70,16 @@ def detect_zscore_anomalies(
     return z_scores > threshold
 
 
+# Backward compatibility aliases
+detect_z_score_outliers = detect_zscore_anomalies
+
+
 def compute_seller_anomalies(
     seller_metrics: pd.DataFrame,
     metrics: list[str] | None = None,
     iqr_multiplier: float = 1.5,
     zscore_threshold: float = 3.0,
+    filter_eligible: bool = True,
 ) -> pd.DataFrame:
     """
     Compute anomaly flags for each seller across specified metrics.
@@ -73,19 +89,17 @@ def compute_seller_anomalies(
         metrics: List of metric columns to check (default: risk metrics)
         iqr_multiplier: IQR multiplier for outlier detection
         zscore_threshold: Z-score threshold for anomaly detection
+        filter_eligible: If True, only process sellers with eligible_for_risk_score=True
 
     Returns:
         DataFrame with anomaly flags per seller per metric
     """
     if metrics is None:
-        metrics = [
-            "late_delivery_rate",
-            "average_review_score",
-            "cancellation_rate_proxy",
-            "negative_review_rate",
-            "average_delivery_delay_days",
-            "average_response_time_hours",
-        ]
+        metrics = METRICS_TO_CHECK
+
+    # Filter to only eligible sellers if requested
+    if filter_eligible and "eligible_for_risk_score" in seller_metrics.columns:
+        seller_metrics = seller_metrics[seller_metrics["eligible_for_risk_score"]].copy()
 
     # Filter to only metrics that exist in the data
     available_metrics = [m for m in metrics if m in seller_metrics.columns]
@@ -97,10 +111,14 @@ def compute_seller_anomalies(
         # IQR-based outlier detection
         iqr_outliers = detect_iqr_outliers(seller_metrics[metric], multiplier=iqr_multiplier)
         results[f"{metric}_iqr_outlier"] = iqr_outliers
+        # Backward compatibility
+        results[f"{metric}_iqr"] = iqr_outliers
 
         # Z-score based anomaly detection
         zscore_anomalies = detect_zscore_anomalies(seller_metrics[metric], threshold=zscore_threshold)
         results[f"{metric}_zscore_anomaly"] = zscore_anomalies
+        # Backward compatibility
+        results[f"{metric}_zscore"] = zscore_anomalies
 
         # Combined flag (either method flags it)
         results[f"{metric}_anomaly"] = iqr_outliers | zscore_anomalies
@@ -112,7 +130,84 @@ def compute_seller_anomalies(
     # Count of anomalous metrics per seller
     results["anomaly_count"] = results[anomaly_cols].sum(axis=1)
 
+    # Add columns expected by scorecard
+    results["is_anomaly"] = results["any_anomaly"]
+
+    # Build anomalous_metrics string
+    def build_anomalous_metrics(row):
+        metrics_flagged = []
+        for metric in available_metrics:
+            if row.get(f"{metric}_anomaly", False):
+                metrics_flagged.append(metric)
+        return ", ".join(metrics_flagged)
+
+    results["anomalous_metrics"] = results.apply(build_anomalous_metrics, axis=1)
+
     return results.reset_index(drop=True)
+
+
+def detect_anomalies(
+    seller_metrics: pd.DataFrame,
+    metrics: list[str] | None = None,
+    iqr_multiplier: float = 1.5,
+    zscore_threshold: float = 3.0,
+    filter_eligible: bool = True,
+) -> pd.DataFrame:
+    """
+    Detect anomalies in seller metrics using IQR and Z-score methods.
+
+    This is a convenience wrapper around compute_seller_anomalies.
+
+    Args:
+        seller_metrics: DataFrame with seller-level metrics
+        metrics: List of metric columns to check (default: risk metrics)
+        iqr_multiplier: IQR multiplier for outlier detection
+        zscore_threshold: Z-score threshold for anomaly detection
+        filter_eligible: If True, only process sellers with eligible_for_risk_score=True
+
+    Returns:
+        DataFrame with anomaly flags per seller per metric
+    """
+    return compute_seller_anomalies(
+        seller_metrics,
+        metrics=metrics,
+        iqr_multiplier=iqr_multiplier,
+        zscore_threshold=zscore_threshold,
+        filter_eligible=filter_eligible,
+    )
+
+
+def build_anomaly_summary(anomalies: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build a summary of anomalies by metric.
+
+    Args:
+        anomalies: DataFrame from compute_seller_anomalies or detect_anomalies
+
+    Returns:
+        DataFrame with summary statistics per metric
+    """
+    summary_rows = []
+    for metric in METRICS_TO_CHECK:
+        iqr_col = f"{metric}_iqr_outlier"
+        zscore_col = f"{metric}_zscore_anomaly"
+        anomaly_col = f"{metric}_anomaly"
+
+        if anomaly_col not in anomalies.columns:
+            continue
+
+        iqr_flagged = int(anomalies[iqr_col].sum()) if iqr_col in anomalies.columns else 0
+        zscore_flagged = int(anomalies[zscore_col].sum()) if zscore_col in anomalies.columns else 0
+        either_flagged = int(anomalies[anomaly_col].sum())
+
+        summary_rows.append({
+            "metric": metric,
+            "iqr_flagged": iqr_flagged,
+            "zscore_flagged": zscore_flagged,
+            "either_flagged": either_flagged,
+        })
+
+    return pd.DataFrame(summary_rows)
 
 
 def run_anomaly_detection(

@@ -10,24 +10,28 @@ from src.anomaly_detection import (
 )
 
 
+_N_NORMAL = 19  # 19 normal + 1 anomalous gives Z≈4.4 at threshold=3.5
+
+
 def _make_sellers() -> pd.DataFrame:
     return pd.DataFrame(
         {
-            "seller_id": ["s_normal"] * 10 + ["s_anomalous"],
-            "total_orders": [10] * 10 + [8],
-            "late_delivery_rate": [0.05] * 10 + [0.9],
-            "average_review_score": [4.0] * 10 + [1.2],
-            "negative_review_rate": [0.1] * 10 + [0.95],
-            "cancellation_rate_proxy": [0.01] * 10 + [0.4],
-            "average_response_time_hours": [60.0] * 10 + [1200.0],
-            "eligible_for_risk_score": [True] * 11,
+            "seller_id": ["s_normal"] * _N_NORMAL + ["s_anomalous"],
+            "total_orders": [10] * _N_NORMAL + [8],
+            "late_delivery_rate": [0.05] * _N_NORMAL + [0.9],
+            "average_review_score": [4.0] * _N_NORMAL + [1.2],
+            "negative_review_rate": [0.1] * _N_NORMAL + [0.95],
+            "cancellation_rate_proxy": [0.01] * _N_NORMAL + [0.4],
+            "average_response_time_hours": [60.0] * _N_NORMAL + [1200.0],
+            "eligible_for_risk_score": [True] * (_N_NORMAL + 1),
         }
     )
 
 
 class AnomalyDetectionTests(unittest.TestCase):
     def test_iqr_detects_outlier_in_high_value(self):
-        series = pd.Series([1, 1, 1, 1, 1, 1, 1, 1, 1, 100])
+        # Use data with enough variation for IQR to work
+        series = pd.Series([1, 2, 1, 3, 2, 1, 3, 2, 1, 50])
         flags = detect_iqr_outliers(series)
         self.assertTrue(flags.iloc[-1])
         self.assertFalse(flags.iloc[0])
@@ -78,7 +82,7 @@ class AnomalyDetectionTests(unittest.TestCase):
         sellers.loc[sellers["seller_id"] == "s_anomalous", "eligible_for_risk_score"] = False
         result = detect_anomalies(sellers)
 
-        self.assertEqual(len(result), 10)
+        self.assertEqual(len(result), _N_NORMAL)
         self.assertFalse(result["is_anomaly"].any())
 
     def test_build_anomaly_summary_counts_by_metric(self):
