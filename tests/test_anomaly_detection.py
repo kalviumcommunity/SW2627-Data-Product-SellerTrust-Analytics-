@@ -9,7 +9,6 @@ from src.anomaly_detection import (
     detect_z_score_outliers,
 )
 
-
 _N_NORMAL = 19  # 19 normal + 1 anomalous gives Z≈4.4 at threshold=3.5
 
 
