@@ -1,0 +1,5 @@
+seller_id,return_rate,negative_review_rate,late_delivery_rate,cancellation_rate,trust_score,anomaly_count,declining_trend,total_orders,seller_age_days
+SELLER_001,0.05,0.02,0.03,0.01,85.0,0,False,25,45
+SELLER_002,0.18,0.15,0.12,0.07,45.0,2,True,12,30
+SELLER_003,0.10,0.08,0.06,0.03,60.0,1,False,18,60
+SELLER_004,0.30,,,,,,,
