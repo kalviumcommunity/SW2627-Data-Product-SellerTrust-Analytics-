@@ -30,18 +30,6 @@ def main():
         default=3.5,
         help="Z-score threshold for anomaly detection (default: 3.5)",
     )
-    parser.add_argument(
-        "--min-orders",
-        type=int,
-        default=5,
-        help="Minimum order count before Z-score detection is applied (default: 5)",
-    )
-    parser.add_argument(
-        "--no-exclude-early-deliveries",
-        action="store_true",
-        default=False,
-        help="Include early deliveries (negative delay) in anomaly flags (off by default)",
-    )
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -56,8 +44,6 @@ def main():
         output_path=str(output_path),
         iqr_multiplier=args.iqr_multiplier,
         zscore_threshold=args.zscore_threshold,
-        min_orders=args.min_orders,
-        exclude_early_deliveries=not args.no_exclude_early_deliveries,
     )
 
     print(f"Wrote seller_anomalies.csv: {len(anomalies):,} sellers")
