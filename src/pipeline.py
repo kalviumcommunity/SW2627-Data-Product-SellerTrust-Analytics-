@@ -7,6 +7,9 @@ from pathlib import Path
 import pandas as pd
 
 from src.data_quality import add_delivery_features
+from src.trust_score import calculate_trust_score
+from src.risk_tier import add_risk_tiers
+
 
 REQUIRED_FILES = {
     "orders": "olist_orders_dataset.csv",
@@ -23,7 +26,10 @@ def load_olist_sources(raw_directory: str | Path) -> dict[str, pd.DataFrame]:
     missing = [filename for filename in REQUIRED_FILES.values() if not (raw_path / filename).is_file()]
     if missing:
         raise FileNotFoundError("Missing required raw files: " + ", ".join(missing))
-    return {name: pd.read_csv(raw_path / filename) for name, filename in REQUIRED_FILES.items()}
+    return {
+        name: pd.read_csv(raw_path / filename)
+        for name, filename in REQUIRED_FILES.items()
+    }
 
 
 def profile_frame(frame: pd.DataFrame) -> pd.DataFrame:
@@ -56,13 +62,15 @@ def remove_exact_duplicates(frame: pd.DataFrame) -> pd.DataFrame:
 def clean_sources(sources: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     """Apply the Day 6–8 cleaning decisions before tables are merged."""
     cleaned = {name: remove_exact_duplicates(frame) for name, frame in sources.items()}
-    cleaned["orders"] = add_delivery_features(normalise_text(cleaned["orders"], ["order_status"]))
+    cleaned["orders"] = add_delivery_features(
+        normalise_text(cleaned["orders"], ["order_status"])
+    )
     cleaned["sellers"] = normalise_text(cleaned["sellers"], ["seller_city", "seller_state"])
     cleaned["products"] = normalise_text(cleaned["products"], ["product_category_name"])
     cleaned["reviews"] = normalise_text(cleaned["reviews"], [])
-    cleaned["reviews"]["review_score"] = pd.to_numeric(cleaned["reviews"]["review_score"], errors="coerce").astype(
-        "Int64"
-    )
+    cleaned["reviews"]["review_score"] = pd.to_numeric(
+        cleaned["reviews"]["review_score"], errors="coerce"
+    ).astype("Int64")
     for column in ("review_creation_date", "review_answer_timestamp"):
         if column in cleaned["reviews"]:
             cleaned["reviews"][column] = pd.to_datetime(cleaned["reviews"][column], errors="coerce")
@@ -94,10 +102,13 @@ def build_seller_order_fact(cleaned: dict[str, pd.DataFrame]) -> pd.DataFrame:
     reviews["response_time_hours"] = (
         reviews["review_answer_timestamp"] - reviews["review_creation_date"]
     ).dt.total_seconds() / 3600
-    review_summary = reviews.groupby("order_id", as_index=False).agg(
-        review_score=("review_score", "mean"),
-        review_count=("review_id", "nunique"),
-        response_time_hours=("response_time_hours", "mean"),
+    review_summary = (
+        reviews.groupby("order_id", as_index=False)
+        .agg(
+            review_score=("review_score", "mean"),
+            review_count=("review_id", "nunique"),
+            response_time_hours=("response_time_hours", "mean"),
+        )
     )
     fact = seller_orders.merge(review_summary, on="order_id", how="left", validate="m:1")
     fact["sentiment_bucket"] = pd.cut(
@@ -108,15 +119,35 @@ def build_seller_order_fact(cleaned: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
 def build_seller_metrics(seller_orders: pd.DataFrame) -> pd.DataFrame:
     """Produce seller-level v1 metrics using the PRD's locked proxy definitions."""
+    # Late delivery rate: use delivered orders with valid dates as denominator (industry standard)
+    # is_late_delivery is True only for delivered orders with valid dates that are late
+    # For cancelled/pending orders, is_late_delivery is NaN (excluded from mean)
+    # But we need explicit denominator: delivered orders with valid delivery dates
+    delivered_with_dates = seller_orders.dropna(subset=["order_delivered_customer_date", "order_estimated_delivery_date"])
+    delivered_with_dates = delivered_with_dates[delivered_with_dates["order_status"] == "delivered"]
+
+    late_rates = delivered_with_dates.groupby("seller_id").apply(
+        lambda g: (g["is_late_delivery"] == True).sum() / len(g) if len(g) > 0 else 0.0
+    ).rename("late_delivery_rate")
+
+    avg_delays = delivered_with_dates.groupby("seller_id")["delivery_delay_days"].mean().rename("average_delivery_delay_days")
+
     metrics = seller_orders.groupby("seller_id", as_index=False).agg(
         total_orders=("order_id", "nunique"),
         cancelled_orders=("order_status", lambda values: int((values == "canceled").sum())),
-        late_delivery_rate=("is_late_delivery", "mean"),
-        average_delivery_delay_days=("delivery_delay_days", "mean"),
         average_review_score=("review_score", "mean"),
         negative_review_rate=("review_score", lambda s: float(s.dropna().le(2).mean()) if s.notna().any() else 0.0),
         average_response_time_hours=("response_time_hours", "mean"),
     )
+
+    # Merge corrected delivery metrics
+    metrics = metrics.merge(late_rates.reset_index(), on="seller_id", how="left")
+    metrics = metrics.merge(avg_delays.reset_index(), on="seller_id", how="left")
+
+    # Fill NaN for sellers with no delivered orders with valid dates
+    metrics["late_delivery_rate"] = metrics["late_delivery_rate"].fillna(0.0)
+    metrics["average_delivery_delay_days"] = metrics["average_delivery_delay_days"].fillna(0.0)
+
     metrics["cancellation_rate_proxy"] = metrics["cancelled_orders"] / metrics["total_orders"]
     metrics["eligible_for_risk_score"] = metrics["total_orders"] >= 5
     return metrics
@@ -130,6 +161,8 @@ def run_pipeline(raw_directory: str | Path, output_directory: str | Path) -> dic
     cleaned = clean_sources(sources)
     fact = build_seller_order_fact(cleaned)
     metrics = build_seller_metrics(fact)
+    metrics = calculate_trust_score(metrics)
+    metrics = add_risk_tiers(metrics)
     for name, frame in {"seller_order_fact": fact, "seller_metrics": metrics}.items():
         frame.to_csv(output_path / f"{name}.csv", index=False)
     return {"seller_order_fact": fact, "seller_metrics": metrics}
