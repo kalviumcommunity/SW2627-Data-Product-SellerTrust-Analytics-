@@ -126,7 +126,7 @@ def build_seller_metrics(seller_orders: pd.DataFrame) -> pd.DataFrame:
     delivered_with_dates = delivered_with_dates[delivered_with_dates["order_status"] == "delivered"]
 
     late_rates = delivered_with_dates.groupby("seller_id").apply(
-        lambda g: (g["is_late_delivery"] == True).sum() / len(g) if len(g) > 0 else 0.0
+        lambda g: (g["is_late_delivery"]).sum() / len(g) if len(g) > 0 else 0.0
     ).rename("late_delivery_rate")
 
     avg_delays = delivered_with_dates.groupby("seller_id")["delivery_delay_days"].mean().rename("average_delivery_delay_days")
