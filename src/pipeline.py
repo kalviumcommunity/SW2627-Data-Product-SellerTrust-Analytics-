@@ -7,9 +7,8 @@ from pathlib import Path
 import pandas as pd
 
 from src.data_quality import add_delivery_features
-from src.trust_score import calculate_trust_score
 from src.risk_tier import add_risk_tiers
-
+from src.trust_score import calculate_trust_score
 
 REQUIRED_FILES = {
     "orders": "olist_orders_dataset.csv",
