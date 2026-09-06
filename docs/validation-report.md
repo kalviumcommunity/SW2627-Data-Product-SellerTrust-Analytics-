@@ -1,48 +1,16 @@
 # End-to-End Data Validation Report
 
 ## Pipeline Execution Summary
-- Date: 2026-09-04
-- Raw Data Source: Olist v1 CSVs (5 files)
-- Pipeline Status: SUCCESS
+- Date: 2026-09-06
+- Raw Data Source: Olist v1 CSVs (5 files) - MISSING
+- Pipeline Status: FAILED
 
-## Row Counts at Each Stage
-| Stage | Row Count |
-|-------|-----------|
-| Raw Orders (olist_orders_dataset.csv) | 100,010 |
-| Seller-Order Fact Table | 100,010 |
-| Seller Metrics (aggregated) | 3,095 |
-| Sellers with Trust Score | 1,794 |
-| Sellers without Trust Score (ineligible) | 1,301 |
+## Error Details
+The pipeline failed to execute due to missing raw data files.
+Error: FileNotFoundError: Missing required raw files: olist_orders_dataset.csv, olist_order_items_dataset.csv, olist_order_reviews_dataset.csv, olist_sellers_dataset.csv, olist_products_dataset.csv
 
 ## Data Quality Checks
-
-### NULL Value Analysis
-- **late_delivery_rate**: PASS
-- **average_review_score**: 5 NULLs
-- **cancellation_rate_proxy**: PASS
-- **negative_review_rate**: PASS
-- **trust_score (eligible sellers)**: PASS - No NULLs for eligible sellers
-- **trust_score (ineligible sellers)**: PASS - All correctly NULL
-
-### Trust Score Distribution
-- Mean: 88.01
-- Median: 89.06
-- Min: 40.00
-- Max: 100.00
-- Std Dev: 7.68
-
-### Eligibility Check
-- Eligible (>=5 orders): 1,794 (58.0%)
-- Ineligible (<5 orders): 1,301 (42.0%)
-
-## Anomaly Detection Summary
-- Sellers with any anomaly: 780 of 3,095 (25.2%)
-
-## Trend Detection Summary
-- Declining trend: 76
-- Improving trend: 73
-- Stable: 1,638
-- Insufficient data: 1,303
+Could not be performed due to pipeline failure.
 
 ## Overall Validation Result
-ALL CHECKS PASSED - Pipeline executed successfully, all 3,095 sellers processed, trust scores computed for eligible sellers.
+VALIDATION FAILED - Pipeline could not execute because raw Olist dataset is not present in data/raw/. Please download the five required CSV files from https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce and place them in data/raw/ before re-running.
