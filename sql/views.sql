@@ -48,7 +48,11 @@ ranked AS (
                 )
             ELSE NULL
         END AS trust_score_percentile,
-        -- Risk tier classification
+        -- Score band, NOT the same thing as seller_metrics.risk_tier.
+        -- seller_metrics.risk_tier is ESCALATE/COACH/MONITOR, driven by the per-metric
+        -- thresholds in src/config/thresholds.yaml. This is a plain banding of the trust
+        -- score. Two different questions, so two different column names: reusing
+        -- "risk_tier" here would put two incompatible vocabularies in one database.
         CASE
             WHEN eligible_for_risk_score = 0 THEN 'insufficient_data'
             WHEN trust_score IS NULL THEN 'insufficient_data'
@@ -56,7 +60,7 @@ ranked AS (
             WHEN trust_score >= 60 THEN 'medium_risk'
             WHEN trust_score >= 40 THEN 'high_risk'
             ELSE 'critical_risk'
-        END AS risk_tier
+        END AS trust_score_band
     FROM trust_scored
 )
 SELECT
@@ -72,7 +76,7 @@ SELECT
     eligible_for_risk_score,
     trust_score,
     trust_score_percentile,
-    risk_tier
+    trust_score_band
 FROM ranked;
 
 
