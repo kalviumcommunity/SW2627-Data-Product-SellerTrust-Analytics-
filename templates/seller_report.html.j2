@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seller Health Report — {{ report.seller_id }}</title>
+<style>
+  :root {
+    --ink: #1a1d21;
+    --muted: #5f6b76;
+    --line: #e3e7eb;
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --escalate: #b42318;
+    --escalate-bg: #fee4e2;
+    --coach: #b54708;
+    --coach-bg: #fef0c7;
+    --monitor: #175cd3;
+    --monitor-bg: #d1e9ff;
+    --ok: #027a48;
+    --ok-bg: #d1fadf;
+    --neutral: #475467;
+    --neutral-bg: #eaecf0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 16px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .page { max-width: 900px; margin: 0 auto; }
+  header {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 21px; letter-spacing: -0.01em; }
+  .seller-id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; color: var(--muted); word-break: break-all; }
+  .headline { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
+  .score { font-size: 34px; font-weight: 650; letter-spacing: -0.02em; }
+  .score small { font-size: 15px; font-weight: 400; color: var(--muted); }
+  .badge {
+    display: inline-block;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    background: var(--neutral-bg);
+    color: var(--neutral);
+  }
+  .badge-escalate, .badge-high-risk { background: var(--escalate-bg); color: var(--escalate); }
+  .badge-coach, .badge-return-prone { background: var(--coach-bg); color: var(--coach); }
+  .badge-monitor, .badge-inconsistent { background: var(--monitor-bg); color: var(--monitor); }
+  .badge-healthy, .badge-reliable, .badge-no-action { background: var(--ok-bg); color: var(--ok); }
+  .notice {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-left: 3px solid var(--coach);
+    background: var(--coach-bg);
+    border-radius: 0 6px 6px 0;
+    font-size: 14px;
+  }
+  section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 28px;
+    margin-bottom: 20px;
+  }
+  section h2 {
+    margin: 0 0 16px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .metric { background: var(--card); padding: 14px 16px; }
+  .metric .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .metric .value { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+  .metric .value.na { color: var(--muted); font-weight: 400; }
+  ul.plain { margin: 0; padding-left: 20px; }
+  ul.plain li { margin-bottom: 6px; }
+  .empty { color: var(--muted); font-style: italic; }
+  table.history { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.history th, table.history td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); }
+  table.history th:first-child, table.history td:first-child { text-align: left; }
+  table.history th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+  .chart { overflow-x: auto; }
+  footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 0 24px; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    section, header { border: none; padding: 12px 0; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>Seller Health Report</h1>
+    <div class="seller-id">{{ report.seller_id }}</div>
+    <div class="headline">
+      {% if report.trust_score is not none %}
+      <div class="score">{{ "%.1f"|format(report.trust_score) }}<small> / 100 trust</small></div>
+      {% else %}
+      <div class="score"><small>No trust score</small></div>
+      {% endif %}
+      <span class="badge badge-{{ report.risk_tier|lower|replace(' ', '-') }}">{{ report.risk_tier }}</span>
+      <span class="badge badge-{{ report.recommended_action|lower|replace(' ', '-') }}">{{ report.recommended_action }}</span>
+    </div>
+    {% if report.eligibility_note %}
+    <div class="notice">{{ report.eligibility_note }}</div>
+    {% endif %}
+  </header>
+
+  <section>
+    <h2>Metrics</h2>
+    <div class="metrics">
+      {% for metric in report.metrics %}
+      <div class="metric">
+        <div class="label">{{ metric.label }}</div>
+        <div class="value{% if metric.value == 'n/a' %} na{% endif %}">{{ metric.value }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Review score trend</h2>
+    <p style="margin:0 0 8px"><span class="badge badge-{{ report.trend.flag|replace('_', '-') }}">{{ report.trend.label }}</span></p>
+    <p style="margin:0">{{ report.trend.description }}</p>
+    {% if report.trend.slope is not none %}
+    <p style="margin:8px 0 0; color:var(--muted); font-size:13px">
+      Slope {{ "%.6f"|format(report.trend.slope) }} review points per day, p = {{ "%.4f"|format(report.trend.p_value) }}.
+      Flagged as a trend only when p &lt; 0.05.
+    </p>
+    {% endif %}
+  </section>
+
+  {% if chart_html %}
+  <section>
+    <h2>Monthly performance</h2>
+    <div class="chart">{{ chart_html|safe }}</div>
+  </section>
+  {% endif %}
+
+  <section>
+    <h2>Anomalies</h2>
+    {% if report.anomaly_count > 0 %}
+    <p style="margin:0 0 10px">
+      {{ report.anomaly_metrics|length }} metric{{ 's' if report.anomaly_metrics|length != 1 else '' }} flagged as anomalous
+      ({{ report.anomaly_count }} detector hit{{ 's' if report.anomaly_count != 1 else '' }} across IQR and z-score).
+    </p>
+    <ul class="plain">
+      {% for metric in report.anomaly_metrics %}
+      <li>{{ metric }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty" style="margin:0">No anomalies detected.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Recommendation</h2>
+    <p style="margin:0 0 12px">
+      <span class="badge badge-{{ report.recommended_action|lower|replace(' ', '-') }}">{{ report.recommended_action }}</span>
+    </p>
+    {% if report.evidence %}
+    <ul class="plain">
+      {% for item in report.evidence %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty" style="margin:0">No supporting evidence recorded for this seller.</p>
+    {% endif %}
+  </section>
+
+  {% if report.history %}
+  <section>
+    <h2>Month by month</h2>
+    <table class="history">
+      <thead>
+        <tr><th>Month</th><th>Orders</th><th>Avg review</th><th>Late delivery</th></tr>
+      </thead>
+      <tbody>
+        {% for point in report.history %}
+        <tr>
+          <td>{{ point.month }}</td>
+          <td>{{ point.orders }}</td>
+          <td>{% if point.average_review_score is not none %}{{ "%.2f"|format(point.average_review_score) }}{% else %}n/a{% endif %}</td>
+          <td>{% if point.late_delivery_rate is not none %}{{ "%.0f"|format(point.late_delivery_rate * 100) }}%{% else %}n/a{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <footer>Seller Trust Analytics · generated from data/processed</footer>
+</div>
+</body>
+</html>
