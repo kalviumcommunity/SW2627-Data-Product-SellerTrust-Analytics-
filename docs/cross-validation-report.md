@@ -8,8 +8,8 @@ Ten sellers were sampled across risk tiers and re-measured directly from the raw
 `scripts/spot_check_sellers.py`, which reimplements each metric independently and never imports
 `src/`. If the pipeline and the reference disagree, one of them is wrong.
 
-**Result: 59 of 60 metric comparisons match. One real discrepancy found, and it is a genuine
-pipeline bug.**
+**Result: 60 of 60 metric comparisons match**, after the one real discrepancy this check found was
+fixed in #85.
 
 ---
 
@@ -42,11 +42,11 @@ Six metrics are checked per seller: `total_orders`, `cancelled_orders`, `late_de
 | `total_orders` | 10/10 | Exact, including the two ~1,800-order sellers |
 | `cancelled_orders` | 10/10 | Exact |
 | `late_delivery_rate` | 10/10 | Exact to 0.0001 |
-| `average_delivery_delay_days` | **9/10** | One mismatch — see below |
+| `average_delivery_delay_days` | 10/10 | 9/10 before #85 — see below |
 | `average_review_score` | 10/10 | Exact to 0.0001 |
 | `negative_review_rate` | 10/10 | Exact to 0.0001 |
 
-## Discrepancy found
+## Discrepancy found, and fixed
 
 **Seller `3febca52652e7209509ccfe61cbde40e` — `average_delivery_delay_days`: dashboard reports
 `0.0`, raw data says "unknown".**
@@ -56,11 +56,15 @@ average. The pipeline's `fillna(0.0)` turned that absence into a confident zero,
 seller delivers exactly on the estimated date" — the single most average-looking value it could have
 picked. 125 sellers in the dataset are in this position.
 
-This is a real data integrity issue, not a tolerance artefact, and it is fixed in
+This was a real data integrity issue, not a tolerance artefact. It was fixed in
 [#85](https://github.com/kalviumcommunity/SW2627-Data-Product-SellerTrust-Analytics-/pull/85):
 `average_delivery_delay_days` is left `NaN` when there is no delivery to measure, and a new
-`delivered_orders_with_dates` column exposes the denominator behind both delivery metrics. Once that
-merges, this check goes to 60/60.
+`delivered_orders_with_dates` column exposes the denominator behind both delivery metrics. With that
+merged, this check now reports **60/60 and exits 0**.
+
+Worth noting how it surfaced: the mismatch was found by an independent reimplementation disagreeing
+with the pipeline, not by anyone reading the pipeline code. That is the argument for keeping this
+script around rather than treating cross-validation as a one-off exercise.
 
 ## Two ways to get the reference wrong
 
