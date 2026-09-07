@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.trust_score import WEIGHTS, _normalise_0_100, _score_review_quality
+from src.trust_score import _get_weights, _normalise_0_100, _score_review_quality
 
 
 def decompose_risk_signals(seller_metrics: pd.DataFrame) -> pd.DataFrame:
@@ -25,15 +25,17 @@ def decompose_risk_signals(seller_metrics: pd.DataFrame) -> pd.DataFrame:
     """
     scored = seller_metrics.copy()
 
+    weights = _get_weights()
+
     delivery_raw = _normalise_0_100(1 - scored["late_delivery_rate"], invert=False)
     review_raw = _score_review_quality(scored["average_review_score"])
     cancellation_raw = _normalise_0_100(scored["cancellation_rate_proxy"], invert=True)
     negative_review_raw = _normalise_0_100(scored["negative_review_rate"], invert=True)
 
-    delivery_contribution = (WEIGHTS["delivery_performance"] * delivery_raw).round(2)
-    review_contribution = (WEIGHTS["review_quality"] * review_raw).round(2)
-    cancellation_contribution = (WEIGHTS["cancellation_score"] * cancellation_raw).round(2)
-    negative_review_contribution = (WEIGHTS["negative_review_score"] * negative_review_raw).round(2)
+    delivery_contribution = (weights["delivery_performance"] * delivery_raw).round(2)
+    review_contribution = (weights["review_quality"] * review_raw).round(2)
+    cancellation_contribution = (weights["cancellation_score"] * cancellation_raw).round(2)
+    negative_review_contribution = (weights["negative_review_score"] * negative_review_raw).round(2)
 
     trust_score = (
         delivery_contribution + review_contribution + cancellation_contribution + negative_review_contribution

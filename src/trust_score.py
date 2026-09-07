@@ -4,16 +4,21 @@ from __future__ import annotations
 
 import pandas as pd
 
-# Weights reflect relative importance of each signal.
-# Delivery performance and review quality are primary trust indicators (30% each).
-# Cancellation and negative review rates are secondary signals (20% each).
-# These weights can be adjusted if correlation analysis shows double-counting.
-WEIGHTS = {
-    "delivery_performance": 0.30,
-    "review_quality": 0.30,
-    "cancellation_score": 0.20,
-    "negative_review_score": 0.20,
-}
+from src.config_loader import get_config
+
+
+def _get_weights() -> dict[str, float]:
+    """Load trust score weights from config."""
+    cfg = get_config()
+    return cfg.get(
+        "trust_score_weights",
+        {
+            "delivery_performance": 0.30,
+            "review_quality": 0.30,
+            "cancellation_score": 0.20,
+            "negative_review_score": 0.20,
+        },
+    )
 
 
 def _normalise_0_100(series: pd.Series, invert: bool = False) -> pd.Series:
@@ -45,16 +50,18 @@ def calculate_trust_score(seller_metrics: pd.DataFrame) -> pd.DataFrame:
     """
     scored = seller_metrics.copy()
 
+    weights = _get_weights()
+
     delivery = _normalise_0_100(1 - scored["late_delivery_rate"], invert=False)
     review = _score_review_quality(scored["average_review_score"])
     cancellation = _normalise_0_100(scored["cancellation_rate_proxy"], invert=True)
     negative_review = _normalise_0_100(scored["negative_review_rate"], invert=True)
 
     raw_score = (
-        WEIGHTS["delivery_performance"] * delivery
-        + WEIGHTS["review_quality"] * review
-        + WEIGHTS["cancellation_score"] * cancellation
-        + WEIGHTS["negative_review_score"] * negative_review
+        weights["delivery_performance"] * delivery
+        + weights["review_quality"] * review
+        + weights["cancellation_score"] * cancellation
+        + weights["negative_review_score"] * negative_review
     )
     scored["trust_score"] = pd.to_numeric(raw_score, errors="coerce").round(2)
 

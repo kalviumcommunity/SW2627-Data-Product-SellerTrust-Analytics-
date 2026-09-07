@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from src.anomaly_detection import compute_seller_anomalies
+from src.config_loader import get_config
 from src.trust_score import calculate_trust_score
 
 ACTION_ESCALATE = "Escalate"
@@ -12,17 +13,25 @@ ACTION_COACH = "Coach"
 ACTION_MONITOR = "Monitor"
 ACTION_NONE = "No Action"
 
-# Thresholds for action assignment (trust score 0-100)
-ESCALATE_SCORE_THRESHOLD = 45
-COACH_SCORE_THRESHOLD = 65
 
-# Minimum anomaly count to trigger Escalate
-ESCALATE_ANOMALY_COUNT = 3
+def _get_thresholds() -> dict[str, float]:
+    """Load action thresholds from config."""
+    cfg = get_config()
+    return cfg.get(
+        "action_thresholds",
+        {
+            "escalate_score": 45,
+            "coach_score": 65,
+            "monitor_score": 80,
+            "escalate_anomaly_count": 3,
+        },
+    )
 
 
 def _build_evidence(row: pd.Series) -> list[str]:
     """Generate human-readable evidence bullets for a seller's risk profile."""
     evidence = []
+    thresholds = _get_thresholds()
 
     if row.get("late_delivery_rate", 0) > 0.15:
         evidence.append(f"Late delivery rate is {row['late_delivery_rate']:.0%} (high)")
@@ -48,7 +57,7 @@ def _build_evidence(row: pd.Series) -> list[str]:
         evidence.append(f"Avg response time is {row['average_response_time_hours']:.0f}h (slow)")
 
     anomaly_count = row.get("anomaly_count", 0)
-    if anomaly_count >= ESCALATE_ANOMALY_COUNT:
+    if anomaly_count >= thresholds["escalate_anomaly_count"]:
         evidence.append(f"{anomaly_count} metrics flagged as anomalous")
     elif anomaly_count > 0:
         evidence.append(f"{anomaly_count} metric(s) flagged as anomalous")
@@ -72,22 +81,24 @@ def _assign_action(
     Monitor: trust score between 65-80 with minor concerns
     No Action: trust score >= 80 with no concerns
     """
+    thresholds = _get_thresholds()
+
     if pd.isna(trust_score):
         return ACTION_MONITOR
 
-    if trust_score < ESCALATE_SCORE_THRESHOLD:
+    if trust_score < thresholds["escalate_score"]:
         return ACTION_ESCALATE
 
-    if trust_score < COACH_SCORE_THRESHOLD and anomaly_count >= ESCALATE_ANOMALY_COUNT:
+    if trust_score < thresholds["coach_score"] and anomaly_count >= thresholds["escalate_anomaly_count"]:
         return ACTION_ESCALATE
 
-    if trust_score < COACH_SCORE_THRESHOLD:
+    if trust_score < thresholds["coach_score"]:
         return ACTION_COACH
 
     if negative_review_rate > 0.25 or cancellation_rate > 0.03:
         return ACTION_COACH
 
-    if trust_score < 80:
+    if trust_score < thresholds["monitor_score"]:
         return ACTION_MONITOR
 
     return ACTION_NONE
@@ -110,6 +121,7 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
     """
     prepared = seller_metrics.copy()
     prepared["eligible_for_risk_score"] = prepared["eligible_for_risk_score"].astype(bool)
+    cfg = get_config()
     scored = calculate_trust_score(prepared)
     anomalies = compute_seller_anomalies(prepared)
     merged = scored.merge(
@@ -123,8 +135,8 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
 
     merged["risk_tier"] = pd.cut(
         merged["trust_score"],
-        bins=[-0.01, 45, 60, 75, 100],
-        labels=["High-Risk", "Return-Prone", "Inconsistent", "Reliable"],
+        bins=cfg["risk_tier_bins"]["bins"],
+        labels=cfg["risk_tier_bins"]["labels"],
     ).astype("string")
     merged.loc[merged["trust_score"].isna(), "risk_tier"] = "Insufficient Data"
 

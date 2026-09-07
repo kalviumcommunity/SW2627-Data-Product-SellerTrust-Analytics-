@@ -2,7 +2,7 @@ import unittest
 
 import pandas as pd
 
-from src.trust_score import WEIGHTS, calculate_trust_score
+from src.trust_score import _get_weights, calculate_trust_score
 
 
 def _make_seller(**overrides) -> pd.DataFrame:
@@ -41,7 +41,8 @@ class TrustScoreTests(unittest.TestCase):
         self.assertAlmostEqual(result.loc[0, "trust_score"], 0.0)
 
     def test_weights_sum_to_one(self):
-        self.assertAlmostEqual(sum(WEIGHTS.values()), 1.0)
+        weights = _get_weights()
+        self.assertAlmostEqual(sum(weights.values()), 1.0)
 
     def test_ineligible_sellers_get_nan(self):
         seller = _make_seller(eligible_for_risk_score=False)
