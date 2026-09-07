@@ -4,7 +4,6 @@ import pandas as pd
 
 from src.anomaly_detection import METRICS_TO_CHECK, detect_anomalies
 
-
 BADGE_BY_TIER = {
     "High-Risk": "🔴 High Risk",
     "Return-Prone": "🟡 Watchlist",

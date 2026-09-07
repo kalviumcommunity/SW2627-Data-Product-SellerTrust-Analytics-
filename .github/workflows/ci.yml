@@ -21,7 +21,9 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Lint with ruff
-        run: ruff check src/ tests/
+        # Whole repo, not just src/ and tests/. app/ and scripts/ were unlinted,
+        # which is how an import-sort error sat in app/scorecard.py unnoticed.
+        run: ruff check .
 
   test:
     name: Test
