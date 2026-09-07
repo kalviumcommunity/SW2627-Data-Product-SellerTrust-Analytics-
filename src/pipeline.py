@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from src.data_quality import add_delivery_features
@@ -125,27 +126,34 @@ def build_seller_metrics(seller_orders: pd.DataFrame) -> pd.DataFrame:
     delivered_with_dates = seller_orders.dropna(subset=["order_delivered_customer_date", "order_estimated_delivery_date"])
     delivered_with_dates = delivered_with_dates[delivered_with_dates["order_status"] == "delivered"]
 
-    late_rates = delivered_with_dates.groupby("seller_id").apply(
-        lambda g: (g["is_late_delivery"]).sum() / len(g) if len(g) > 0 else 0.0
-    ).rename("late_delivery_rate")
-
-    avg_delays = delivered_with_dates.groupby("seller_id")["delivery_delay_days"].mean().rename("average_delivery_delay_days")
+    by_seller = delivered_with_dates.groupby("seller_id")
+    late_rates = by_seller["is_late_delivery"].mean().rename("late_delivery_rate")
+    avg_delays = by_seller["delivery_delay_days"].mean().rename("average_delivery_delay_days")
+    # Denominator behind the two metrics above. Exposed so consumers can distinguish
+    # "0% late across 94 deliveries" from "0% late across nothing at all".
+    delivered_counts = by_seller.size().rename("delivered_orders_with_dates")
 
     metrics = seller_orders.groupby("seller_id", as_index=False).agg(
         total_orders=("order_id", "nunique"),
         cancelled_orders=("order_status", lambda values: int((values == "canceled").sum())),
+        # Sellers with no reviews keep NaN rather than an imputed neutral score: an absent
+        # review is unknown, not average, and imputing 3.0 would trip the review thresholds.
         average_review_score=("review_score", "mean"),
-        negative_review_rate=("review_score", lambda s: float(s.dropna().le(2).mean()) if s.notna().any() else 0.0),
+        negative_review_rate=("review_score", lambda s: s.dropna().le(2).mean() if s.notna().any() else np.nan),
         average_response_time_hours=("response_time_hours", "mean"),
     )
 
     # Merge corrected delivery metrics
     metrics = metrics.merge(late_rates.reset_index(), on="seller_id", how="left")
     metrics = metrics.merge(avg_delays.reset_index(), on="seller_id", how="left")
+    metrics = metrics.merge(delivered_counts.reset_index(), on="seller_id", how="left")
+    metrics["delivered_orders_with_dates"] = metrics["delivered_orders_with_dates"].fillna(0).astype(int)
 
-    # Fill NaN for sellers with no delivered orders with valid dates
+    # A seller with no completed delivery has no delivery evidence either way. Keep the rate
+    # at 0.0 so the trust score stays defined, but leave the descriptive average delay NaN
+    # instead of reporting a confident "0 days early"; delivered_orders_with_dates == 0 is
+    # the flag that says the rate is uninformed.
     metrics["late_delivery_rate"] = metrics["late_delivery_rate"].fillna(0.0)
-    metrics["average_delivery_delay_days"] = metrics["average_delivery_delay_days"].fillna(0.0)
 
     metrics["cancellation_rate_proxy"] = metrics["cancelled_orders"] / metrics["total_orders"]
     metrics["eligible_for_risk_score"] = metrics["total_orders"] >= 5

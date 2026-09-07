@@ -44,6 +44,74 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(metrics["negative_review_rate"], 0.4)
         self.assertTrue(metrics["eligible_for_risk_score"])
 
+    def test_seller_without_reviews_keeps_review_metrics_unknown(self):
+        """A seller with no reviews must not be handed an imputed neutral score (issue #31)."""
+        fact = pd.DataFrame({
+            "seller_id": ["s1"],
+            "order_id": ["a"],
+            "order_status": ["delivered"],
+            "is_late_delivery": [False],
+            "delivery_delay_days": [-1],
+            "review_score": [pd.NA],
+            "response_time_hours": [pd.NA],
+            "order_delivered_customer_date": pd.to_datetime(["2018-01-03"]),
+            "order_estimated_delivery_date": pd.to_datetime(["2018-01-04"]),
+        })
+        metrics = build_seller_metrics(fact).iloc[0]
+        self.assertTrue(pd.isna(metrics["average_review_score"]))
+        self.assertTrue(pd.isna(metrics["negative_review_rate"]))
+
+    def test_seller_without_delivered_orders_reports_unknown_delay(self):
+        """No completed delivery means no delivery evidence, not a perfect record (issue #31)."""
+        fact = pd.DataFrame({
+            "seller_id": ["s1", "s1"],
+            "order_id": ["a", "b"],
+            "order_status": ["canceled", "shipped"],
+            "is_late_delivery": [False, False],
+            "delivery_delay_days": [None, None],
+            "review_score": [1, 2],
+            "response_time_hours": [1, 1],
+            "order_delivered_customer_date": pd.to_datetime([None, None]),
+            "order_estimated_delivery_date": pd.to_datetime(["2018-01-04", "2018-01-05"]),
+        })
+        metrics = build_seller_metrics(fact).iloc[0]
+        self.assertEqual(metrics["delivered_orders_with_dates"], 0)
+        self.assertTrue(pd.isna(metrics["average_delivery_delay_days"]))
+        # The rate stays 0.0 so the trust score remains computable; the count is the caveat.
+        self.assertEqual(metrics["late_delivery_rate"], 0.0)
+
+    def test_delivered_orders_with_dates_counts_the_late_rate_denominator(self):
+        fact = pd.DataFrame({
+            "seller_id": ["s1"] * 3,
+            "order_id": list("abc"),
+            "order_status": ["delivered", "delivered", "shipped"],
+            "is_late_delivery": [True, False, False],
+            "delivery_delay_days": [2, -1, None],
+            "review_score": [1, 5, 4],
+            "response_time_hours": [1, 1, 1],
+            "order_delivered_customer_date": pd.to_datetime(["2018-01-05", "2018-01-03", None]),
+            "order_estimated_delivery_date": pd.to_datetime(["2018-01-04", "2018-01-04", "2018-01-04"]),
+        })
+        metrics = build_seller_metrics(fact).iloc[0]
+        self.assertEqual(metrics["delivered_orders_with_dates"], 2)
+        self.assertEqual(metrics["late_delivery_rate"], 0.5)
+
+    def test_all_cancelled_seller_reaches_full_cancellation_rate(self):
+        fact = pd.DataFrame({
+            "seller_id": ["s1", "s1"],
+            "order_id": ["a", "b"],
+            "order_status": ["canceled", "canceled"],
+            "is_late_delivery": [False, False],
+            "delivery_delay_days": [None, None],
+            "review_score": [1, 1],
+            "response_time_hours": [1, 1],
+            "order_delivered_customer_date": pd.to_datetime([None, None]),
+            "order_estimated_delivery_date": pd.to_datetime(["2018-01-04", "2018-01-05"]),
+        })
+        metrics = build_seller_metrics(fact).iloc[0]
+        self.assertEqual(metrics["cancellation_rate_proxy"], 1.0)
+        self.assertFalse(metrics["eligible_for_risk_score"])
+
     def test_pipeline_writes_dashboard_ready_outputs(self):
         with TemporaryDirectory() as temp_dir:
             raw = Path(temp_dir) / "raw"
