@@ -8,12 +8,15 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.logging_config import get_pipeline_logger
+
 DEFAULT_DB_PATH = Path("data/trust_analytics.db")
 DEFAULT_VIEWS_PATH = Path(__file__).resolve().parent.parent / "sql" / "views.sql"
 
 #: Matches the view names declared in sql/views.sql, so a re-run can drop exactly the
 #: views that file owns rather than every view in the database.
 _CREATE_VIEW = re.compile(r"CREATE\s+VIEW\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_][\w]*)", re.IGNORECASE)
+log = get_pipeline_logger("sql_loader")
 
 
 def view_names(views_path: Path | str = DEFAULT_VIEWS_PATH) -> list[str]:
@@ -147,6 +150,7 @@ def load_to_sql(
 
     if views_path is not None:
         apply_views(db_file, views_path)
+    log.info("Loaded SQL tables into %s: %s", db_file, ", ".join(f"{name}={count} rows" for name, count in row_counts.items()))
     return row_counts
 
 
