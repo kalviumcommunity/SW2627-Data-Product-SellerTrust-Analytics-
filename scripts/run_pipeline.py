@@ -1,8 +1,15 @@
 """Command-line entry point for the Olist pipeline."""
 
 import argparse
+import sys
+from pathlib import Path
 
-from src.pipeline import run_pipeline
+# Allow this file to be run directly from any working directory.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.pipeline import run_pipeline  # noqa: E402
 
 parser = argparse.ArgumentParser(description="Build Seller Trust Analytics processed data.")
 parser.add_argument("--raw-dir", default="data/raw", help="Directory containing the five Olist CSVs.")
