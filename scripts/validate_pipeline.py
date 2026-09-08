@@ -19,7 +19,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.pipeline import run_pipeline
+# Allow this file to be run directly from any working directory.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.pipeline import run_pipeline  # noqa: E402
 
 MIN_ORDERS_FOR_SCORE = 5
 
