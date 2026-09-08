@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.ui_state import (
     FILTER_DEFAULTS,
@@ -55,7 +55,7 @@ class UiStateTests(unittest.TestCase):
 
     def test_mark_data_refreshed_stores_timestamp(self):
         session_state = {}
-        timestamp = datetime(2026, 9, 8, 9, 30, tzinfo=timezone.utc)
+        timestamp = datetime(2026, 9, 8, 9, 30, tzinfo=UTC)
 
         result = mark_data_refreshed(session_state, timestamp)
 
@@ -69,7 +69,7 @@ class UiStateTests(unittest.TestCase):
         )
 
     def test_get_last_refresh_label_formats_timestamp(self):
-        timestamp = datetime(2026, 9, 8, 9, 30, 15, tzinfo=timezone.utc)
+        timestamp = datetime(2026, 9, 8, 9, 30, 15, tzinfo=UTC)
 
         label = get_last_refresh_label({LAST_REFRESHED_KEY: timestamp})
 
