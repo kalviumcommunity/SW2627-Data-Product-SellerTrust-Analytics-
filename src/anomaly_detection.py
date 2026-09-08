@@ -199,12 +199,14 @@ def build_anomaly_summary(anomalies: pd.DataFrame) -> pd.DataFrame:
         zscore_flagged = int(anomalies[zscore_col].sum()) if zscore_col in anomalies.columns else 0
         either_flagged = int(anomalies[anomaly_col].sum())
 
-        summary_rows.append({
-            "metric": metric,
-            "iqr_flagged": iqr_flagged,
-            "zscore_flagged": zscore_flagged,
-            "either_flagged": either_flagged,
-        })
+        summary_rows.append(
+            {
+                "metric": metric,
+                "iqr_flagged": iqr_flagged,
+                "zscore_flagged": zscore_flagged,
+                "either_flagged": either_flagged,
+            }
+        )
 
     return pd.DataFrame(summary_rows)
 

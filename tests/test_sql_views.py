@@ -19,36 +19,40 @@ EXPECTED_VIEWS = ["vw_seller_trust_metrics", "vw_category_risk", "vw_monthly_tre
 def write_processed_csvs(directory: Path) -> None:
     """Minimal seller_order_fact and seller_metrics the views can be built over."""
     directory.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame({
-        "order_id": ["o1", "o2", "o3"],
-        "seller_id": ["s1", "s1", "s2"],
-        "item_count": [1, 2, 1],
-        "item_value": [10.0, 20.0, 30.0],
-        "freight_value": [1.0, 2.0, 3.0],
-        "product_category_name": ["books", "books", None],
-        "order_status": ["delivered", "delivered", "canceled"],
-        "order_purchase_timestamp": ["2018-01-01", "2018-02-01", "2018-02-15"],
-        "delivery_delay_days": [-1.0, 2.0, None],
-        "is_late_delivery": [0, 1, 0],
-        "purchase_month": ["2018-01", "2018-02", "2018-02"],
-        "review_score": [5.0, 2.0, 1.0],
-        "review_count": [1.0, 1.0, 1.0],
-        "response_time_hours": [4.0, 8.0, 2.0],
-        "sentiment_bucket": ["positive", "negative", "negative"],
-    }).to_csv(directory / "seller_order_fact.csv", index=False)
+    pd.DataFrame(
+        {
+            "order_id": ["o1", "o2", "o3"],
+            "seller_id": ["s1", "s1", "s2"],
+            "item_count": [1, 2, 1],
+            "item_value": [10.0, 20.0, 30.0],
+            "freight_value": [1.0, 2.0, 3.0],
+            "product_category_name": ["books", "books", None],
+            "order_status": ["delivered", "delivered", "canceled"],
+            "order_purchase_timestamp": ["2018-01-01", "2018-02-01", "2018-02-15"],
+            "delivery_delay_days": [-1.0, 2.0, None],
+            "is_late_delivery": [0, 1, 0],
+            "purchase_month": ["2018-01", "2018-02", "2018-02"],
+            "review_score": [5.0, 2.0, 1.0],
+            "review_count": [1.0, 1.0, 1.0],
+            "response_time_hours": [4.0, 8.0, 2.0],
+            "sentiment_bucket": ["positive", "negative", "negative"],
+        }
+    ).to_csv(directory / "seller_order_fact.csv", index=False)
 
-    pd.DataFrame({
-        "seller_id": ["s1", "s2"],
-        "total_orders": [7, 1],
-        "cancelled_orders": [0, 1],
-        "late_delivery_rate": [0.5, 0.0],
-        "average_delivery_delay_days": [0.5, None],
-        "average_review_score": [3.5, 1.0],
-        "negative_review_rate": [0.5, 1.0],
-        "average_response_time_hours": [6.0, 2.0],
-        "cancellation_rate_proxy": [0.0, 1.0],
-        "eligible_for_risk_score": [1, 0],
-    }).to_csv(directory / "seller_metrics.csv", index=False)
+    pd.DataFrame(
+        {
+            "seller_id": ["s1", "s2"],
+            "total_orders": [7, 1],
+            "cancelled_orders": [0, 1],
+            "late_delivery_rate": [0.5, 0.0],
+            "average_delivery_delay_days": [0.5, None],
+            "average_review_score": [3.5, 1.0],
+            "negative_review_rate": [0.5, 1.0],
+            "average_response_time_hours": [6.0, 2.0],
+            "cancellation_rate_proxy": [0.0, 1.0],
+            "eligible_for_risk_score": [1, 0],
+        }
+    ).to_csv(directory / "seller_metrics.csv", index=False)
 
 
 class ViewNameTests(unittest.TestCase):

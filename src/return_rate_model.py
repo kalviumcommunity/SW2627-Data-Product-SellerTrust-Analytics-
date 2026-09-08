@@ -119,9 +119,7 @@ def build_seller_month_panel(
 
     # Trailing three-month means, which carry more signal than a single noisy month.
     for column in ("cancellation_rate", "negative_review_rate", "late_delivery_rate"):
-        panel[f"trailing3_{column}"] = grouped[column].transform(
-            lambda series: series.rolling(3, min_periods=1).mean()
-        )
+        panel[f"trailing3_{column}"] = grouped[column].transform(lambda series: series.rolling(3, min_periods=1).mean())
 
     return panel
 

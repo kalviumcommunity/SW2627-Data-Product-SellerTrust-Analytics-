@@ -78,6 +78,7 @@ def get_tier_distribution(seller_metrics: pd.DataFrame) -> pd.Series:
 if __name__ == "__main__":
     # Quick test with pipeline output
     import sys
+
     sys.path.insert(0, str(Path(__file__).parent))
     from pipeline import run_pipeline
 

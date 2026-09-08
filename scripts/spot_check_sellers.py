@@ -100,7 +100,9 @@ def recompute_from_raw(seller_id: str, orders: pd.DataFrame, items: pd.DataFrame
         "delivered_orders": len(delivered),
         "review_rows": len(seller_reviews),
         "reviewed_orders": len(per_order),
-        "average_review_score_by_row": float(seller_reviews["review_score"].mean()) if len(seller_reviews) else float("nan"),
+        "average_review_score_by_row": (
+            float(seller_reviews["review_score"].mean()) if len(seller_reviews) else float("nan")
+        ),
     }
 
 

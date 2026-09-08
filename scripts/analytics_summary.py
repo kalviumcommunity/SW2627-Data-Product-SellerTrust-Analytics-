@@ -111,24 +111,28 @@ def summarise(processed_dir: Path) -> int:
             f"{row['trend_flag']}"
         )
     print("  --- ranges across the top 10 ---")
-    print(f"  late delivery rate  : {riskiest['late_delivery_rate'].min():.1%} - {riskiest['late_delivery_rate'].max():.1%}")
-    print(f"  average review      : {riskiest['average_review_score'].min():.2f} - {riskiest['average_review_score'].max():.2f}")
-    print(f"  negative review rate: {riskiest['negative_review_rate'].min():.1%} - {riskiest['negative_review_rate'].max():.1%}")
+    print(
+        f"  late delivery rate  : {riskiest['late_delivery_rate'].min():.1%} - {riskiest['late_delivery_rate'].max():.1%}"
+    )
+    print(
+        f"  average review      : {riskiest['average_review_score'].min():.2f} - {riskiest['average_review_score'].max():.2f}"
+    )
+    print(
+        f"  negative review rate: {riskiest['negative_review_rate'].min():.1%} - {riskiest['negative_review_rate'].max():.1%}"
+    )
 
     print("\n== Trust-erosion patterns (eligible sellers) ==")
     patterns = {
-        "A late delivery > 30% AND negative reviews > 30%":
-            (eligible["late_delivery_rate"] > 0.30) & (eligible["negative_review_rate"] > 0.30),
-        "B average review < 3.5 AND late delivery > 20%":
-            (eligible["average_review_score"] < 3.5) & (eligible["late_delivery_rate"] > 0.20),
-        "C cancellation > 30% AND negative reviews > 30%":
-            (eligible["cancellation_rate_proxy"] > 0.30) & (eligible["negative_review_rate"] > 0.30),
-        "D declining trend AND >= 2 anomalies":
-            (eligible["trend_flag"] == "declining") & (eligible["anomaly_count"] >= 2),
-        "E negative reviews > 30% alone":
-            eligible["negative_review_rate"] > 0.30,
-        "F late delivery > 30% alone":
-            eligible["late_delivery_rate"] > 0.30,
+        "A late delivery > 30% AND negative reviews > 30%": (eligible["late_delivery_rate"] > 0.30)
+        & (eligible["negative_review_rate"] > 0.30),
+        "B average review < 3.5 AND late delivery > 20%": (eligible["average_review_score"] < 3.5)
+        & (eligible["late_delivery_rate"] > 0.20),
+        "C cancellation > 30% AND negative reviews > 30%": (eligible["cancellation_rate_proxy"] > 0.30)
+        & (eligible["negative_review_rate"] > 0.30),
+        "D declining trend AND >= 2 anomalies": (eligible["trend_flag"] == "declining")
+        & (eligible["anomaly_count"] >= 2),
+        "E negative reviews > 30% alone": eligible["negative_review_rate"] > 0.30,
+        "F late delivery > 30% alone": eligible["late_delivery_rate"] > 0.30,
     }
     for label, mask in patterns.items():
         subset = eligible[mask]
@@ -138,11 +142,23 @@ def summarise(processed_dir: Path) -> int:
 
     print("\n== Correlations: delivery delay vs negative reviews ==")
     print("  Seller level (eligible sellers)")
-    _correlate("late delivery rate  vs negative review rate", eligible["late_delivery_rate"], eligible["negative_review_rate"])
-    _correlate("late delivery rate  vs average review score", eligible["late_delivery_rate"], eligible["average_review_score"])
-    _correlate("avg delivery delay  vs negative review rate", eligible["average_delivery_delay_days"], eligible["negative_review_rate"])
-    _correlate("late delivery rate  vs trust score", eligible["late_delivery_rate"], eligible["trust_score"].astype(float))
-    _correlate("late delivery rate  vs cancellation rate", eligible["late_delivery_rate"], eligible["cancellation_rate_proxy"])
+    _correlate(
+        "late delivery rate  vs negative review rate", eligible["late_delivery_rate"], eligible["negative_review_rate"]
+    )
+    _correlate(
+        "late delivery rate  vs average review score", eligible["late_delivery_rate"], eligible["average_review_score"]
+    )
+    _correlate(
+        "avg delivery delay  vs negative review rate",
+        eligible["average_delivery_delay_days"],
+        eligible["negative_review_rate"],
+    )
+    _correlate(
+        "late delivery rate  vs trust score", eligible["late_delivery_rate"], eligible["trust_score"].astype(float)
+    )
+    _correlate(
+        "late delivery rate  vs cancellation rate", eligible["late_delivery_rate"], eligible["cancellation_rate_proxy"]
+    )
 
     print("  Order level (delivered orders with a review)")
     orders = fact.dropna(subset=["delivery_delay_days", "review_score"]).copy()

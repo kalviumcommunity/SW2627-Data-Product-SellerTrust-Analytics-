@@ -15,30 +15,53 @@ from src.seller_report import (
 
 
 def sample_metrics() -> pd.DataFrame:
-    return pd.DataFrame([
-        {
-            "seller_id": "s1", "total_orders": 20, "cancelled_orders": 0,
-            "average_review_score": 1.26, "negative_review_rate": 0.947,
-            "average_response_time_hours": 44.6, "late_delivery_rate": 0.5,
-            "average_delivery_delay_days": -5.6, "cancellation_rate_proxy": 0.0,
-            "eligible_for_risk_score": True, "trust_score": 38.03, "risk_tier": "ESCALATE",
-        },
-        {
-            "seller_id": "s2", "total_orders": 2, "cancelled_orders": 2,
-            "average_review_score": np.nan, "negative_review_rate": np.nan,
-            "average_response_time_hours": np.nan, "late_delivery_rate": 0.0,
-            "average_delivery_delay_days": np.nan, "cancellation_rate_proxy": 1.0,
-            "eligible_for_risk_score": False, "trust_score": np.nan, "risk_tier": "ESCALATE",
-        },
-    ])
+    return pd.DataFrame(
+        [
+            {
+                "seller_id": "s1",
+                "total_orders": 20,
+                "cancelled_orders": 0,
+                "average_review_score": 1.26,
+                "negative_review_rate": 0.947,
+                "average_response_time_hours": 44.6,
+                "late_delivery_rate": 0.5,
+                "average_delivery_delay_days": -5.6,
+                "cancellation_rate_proxy": 0.0,
+                "eligible_for_risk_score": True,
+                "trust_score": 38.03,
+                "risk_tier": "ESCALATE",
+            },
+            {
+                "seller_id": "s2",
+                "total_orders": 2,
+                "cancelled_orders": 2,
+                "average_review_score": np.nan,
+                "negative_review_rate": np.nan,
+                "average_response_time_hours": np.nan,
+                "late_delivery_rate": 0.0,
+                "average_delivery_delay_days": np.nan,
+                "cancellation_rate_proxy": 1.0,
+                "eligible_for_risk_score": False,
+                "trust_score": np.nan,
+                "risk_tier": "ESCALATE",
+            },
+        ]
+    )
 
 
 def sample_fact() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"seller_id": "s1", "order_id": f"o{i}", "order_purchase_timestamp": f"2018-0{1 + i % 3}-10",
-         "review_score": 1 + i % 3, "is_late_delivery": i % 2 == 0}
-        for i in range(9)
-    ])
+    return pd.DataFrame(
+        [
+            {
+                "seller_id": "s1",
+                "order_id": f"o{i}",
+                "order_purchase_timestamp": f"2018-0{1 + i % 3}-10",
+                "review_score": 1 + i % 3,
+                "is_late_delivery": i % 2 == 0,
+            }
+            for i in range(9)
+        ]
+    )
 
 
 class FormatValueTests(unittest.TestCase):
@@ -63,8 +86,10 @@ class CollectReportTests(unittest.TestCase):
         self.assertEqual(report["seller_id"], "s1")
         self.assertAlmostEqual(report["trust_score"], 38.03)
         self.assertEqual(report["risk_tier"], "ESCALATE")
-        self.assertEqual({m["key"] for m in report["metrics"]} & {"trust_score", "late_delivery_rate"},
-                         {"trust_score", "late_delivery_rate"})
+        self.assertEqual(
+            {m["key"] for m in report["metrics"]} & {"trust_score", "late_delivery_rate"},
+            {"trust_score", "late_delivery_rate"},
+        )
         self.assertEqual(len(report["history"]), 3)
 
     def test_ineligible_seller_is_flagged_not_silently_scored(self):
@@ -85,27 +110,36 @@ class CollectReportTests(unittest.TestCase):
 
     def test_anomaly_metrics_are_named_once_each(self):
         """Three columns per metric must not produce three list entries for one metric."""
-        anomalies = pd.DataFrame([{
-            "seller_id": "s1",
-            "late_delivery_rate_iqr_outlier": True,
-            "late_delivery_rate_zscore_anomaly": True,
-            "late_delivery_rate_anomaly": True,
-            "average_review_score_iqr_outlier": False,
-            "average_review_score_zscore_anomaly": False,
-            "average_review_score_anomaly": False,
-            "any_anomaly": True,
-            "is_anomaly": True,
-            "anomaly_count": 2,
-        }])
+        anomalies = pd.DataFrame(
+            [
+                {
+                    "seller_id": "s1",
+                    "late_delivery_rate_iqr_outlier": True,
+                    "late_delivery_rate_zscore_anomaly": True,
+                    "late_delivery_rate_anomaly": True,
+                    "average_review_score_iqr_outlier": False,
+                    "average_review_score_zscore_anomaly": False,
+                    "average_review_score_anomaly": False,
+                    "any_anomaly": True,
+                    "is_anomaly": True,
+                    "anomaly_count": 2,
+                }
+            ]
+        )
         report = collect_seller_report("s1", metrics=sample_metrics(), fact=sample_fact(), anomalies=anomalies)
         self.assertEqual(report["anomaly_count"], 2)
         self.assertEqual(report["anomaly_metrics"], ["late delivery rate (IQR, z-score)"])
 
     def test_actions_supply_the_recommendation_and_evidence(self):
-        actions = pd.DataFrame([{
-            "seller_id": "s1", "recommended_action": "Escalate",
-            "evidence": ["Late delivery rate is 50% (high)", "Average review score is 1.3/5.0 (very low)"],
-        }])
+        actions = pd.DataFrame(
+            [
+                {
+                    "seller_id": "s1",
+                    "recommended_action": "Escalate",
+                    "evidence": ["Late delivery rate is 50% (high)", "Average review score is 1.3/5.0 (very low)"],
+                }
+            ]
+        )
         report = collect_seller_report("s1", metrics=sample_metrics(), fact=sample_fact(), actions=actions)
         self.assertEqual(report["recommended_action"], "Escalate")
         self.assertEqual(len(report["evidence"]), 2)
@@ -135,9 +169,12 @@ class RenderTests(unittest.TestCase):
 
     def test_chart_is_skipped_for_a_single_month(self):
         """One point is not a trend line; the section should not appear at all."""
-        self.assertEqual(build_history_chart([{"month": "2018-01", "orders": 5,
-                                               "average_review_score": 4.0,
-                                               "late_delivery_rate": 0.1}], "s1"), "")
+        self.assertEqual(
+            build_history_chart(
+                [{"month": "2018-01", "orders": 5, "average_review_score": 4.0, "late_delivery_rate": 0.1}], "s1"
+            ),
+            "",
+        )
 
 
 if __name__ == "__main__":

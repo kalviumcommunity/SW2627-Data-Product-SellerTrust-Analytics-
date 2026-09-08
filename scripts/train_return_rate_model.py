@@ -49,8 +49,10 @@ def main() -> int:
     panel = build_seller_month_panel(pd.read_csv(fact_path))
     features = FEATURE_COLUMNS if args.no_trailing else FEATURE_COLUMNS + TRAILING_FEATURES
 
-    print(f"Seller-month panel: {len(panel):,} rows, {panel['seller_id'].nunique():,} sellers, "
-          f"{panel['month'].nunique()} months ({panel['month'].min()} to {panel['month'].max()})\n")
+    print(
+        f"Seller-month panel: {len(panel):,} rows, {panel['seller_id'].nunique():,} sellers, "
+        f"{panel['month'].nunique()} months ({panel['month'].min()} to {panel['month'].max()})\n"
+    )
 
     targets = [f"next_month_{rate}" for rate in LAGGED_RATES] if args.all_targets else [args.target]
     for target in targets:
