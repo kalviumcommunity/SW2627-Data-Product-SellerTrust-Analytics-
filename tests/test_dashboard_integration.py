@@ -37,6 +37,15 @@ class DashboardIntegrationTests(unittest.TestCase):
         self.assertIn('key="selected_risk_tier"', app_source)
         self.assertIn('key="selected_category"', app_source)
 
+    def test_main_app_has_refresh_button_and_timestamp(self):
+        app_source = Path("app/main.py").read_text()
+
+        self.assertIn('st.button("Refresh Data"', app_source)
+        self.assertIn("run_etl(", app_source)
+        self.assertIn("mark_data_refreshed(st.session_state)", app_source)
+        self.assertIn("get_last_refresh_label(st.session_state)", app_source)
+        self.assertIn("Refreshing dashboard data...", app_source)
+
     def test_main_app_has_edge_case_messages(self):
         app_source = Path("app/main.py").read_text()
 

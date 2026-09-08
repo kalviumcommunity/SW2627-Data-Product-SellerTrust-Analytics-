@@ -16,7 +16,13 @@ from app.signals import (
     prepare_monthly_seller_metrics,
     prepare_signal_metrics,
 )
-from app.ui_state import initialise_filter_state, normalise_selected_option
+from app.ui_state import (
+    get_last_refresh_label,
+    initialise_filter_state,
+    mark_data_refreshed,
+    normalise_selected_option,
+)
+from scripts.etl_pipeline import run_etl
 
 st.set_page_config(
     page_title="Seller Trust Analytics Dashboard",
@@ -34,6 +40,22 @@ with st.sidebar:
         "cancellation proxies, and risk indicators from the Olist e-commerce data."
     )
     st.caption("Use the dashboard tabs to move from marketplace overview to seller-level risk alerts.")
+    st.divider()
+    if st.button("Refresh Data", use_container_width=True):
+        with st.spinner("Refreshing dashboard data..."):
+            try:
+                run_etl(
+                    raw_dir="data/raw",
+                    output_dir="data/processed",
+                    db_path="data/trust_analytics.db",
+                )
+            except Exception as error:
+                st.error(f"Refresh failed: {error}")
+            else:
+                mark_data_refreshed(st.session_state)
+                st.cache_data.clear()
+                st.success("Dashboard data refreshed successfully.")
+    st.caption(get_last_refresh_label(st.session_state))
     st.divider()
     seller_search = st.text_input(
         "Seller search",
