@@ -2,11 +2,55 @@
 
 from __future__ import annotations
 
+import re
+import sqlite3
 from pathlib import Path
 
 import pandas as pd
 
 DEFAULT_DB_PATH = Path("data/trust_analytics.db")
+DEFAULT_VIEWS_PATH = Path(__file__).resolve().parent.parent / "sql" / "views.sql"
+
+#: Matches the view names declared in sql/views.sql, so a re-run can drop exactly the
+#: views that file owns rather than every view in the database.
+_CREATE_VIEW = re.compile(r"CREATE\s+VIEW\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z_][\w]*)", re.IGNORECASE)
+
+
+def view_names(views_path: Path | str = DEFAULT_VIEWS_PATH) -> list[str]:
+    """Names of the views declared in the SQL file, in declaration order."""
+    return _CREATE_VIEW.findall(Path(views_path).read_text(encoding="utf-8"))
+
+
+def apply_views(
+    db_path: Path | str = DEFAULT_DB_PATH,
+    views_path: Path | str = DEFAULT_VIEWS_PATH,
+) -> list[str]:
+    """Create the analytics views defined in sql/views.sql.
+
+    Existing copies are dropped first. `views.sql` uses bare `CREATE VIEW`, so a second
+    run would otherwise fail; dropping also means an edited definition actually takes
+    effect, which `CREATE VIEW IF NOT EXISTS` would silently skip.
+
+    Returns:
+        The view names created, in declaration order.
+
+    Raises:
+        FileNotFoundError: If the SQL file is missing.
+    """
+    sql_path = Path(views_path)
+    if not sql_path.is_file():
+        raise FileNotFoundError(f"Missing SQL views file: {sql_path}")
+
+    names = view_names(sql_path)
+    conn = sqlite3.connect(str(db_path))
+    try:
+        for name in names:
+            conn.execute(f"DROP VIEW IF EXISTS {name}")
+        conn.executescript(sql_path.read_text(encoding="utf-8"))
+        conn.commit()
+    finally:
+        conn.close()
+    return names
 
 
 def _create_indexes(conn) -> None:
@@ -20,8 +64,6 @@ def _create_indexes(conn) -> None:
 
 def create_tables(db_path: Path | str = DEFAULT_DB_PATH) -> None:
     """Create the analytics tables and indexes if they don't already exist."""
-    import sqlite3
-
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
@@ -76,10 +118,13 @@ def create_tables(db_path: Path | str = DEFAULT_DB_PATH) -> None:
 def load_to_sql(
     data_dir: Path | str = "data/processed",
     db_path: Path | str = DEFAULT_DB_PATH,
+    views_path: Path | str | None = DEFAULT_VIEWS_PATH,
 ) -> dict[str, int]:
-    """Load CSV files into SQLite tables and return row counts."""
-    import sqlite3
+    """Load CSV files into SQLite tables, rebuild the analytics views, return row counts.
 
+    Views are rebuilt after the tables load, because `to_sql(if_exists="replace")` drops
+    and recreates each table underneath them. Pass `views_path=None` to load data only.
+    """
     data_path = Path(data_dir)
     db_file = Path(db_path)
     db_file.parent.mkdir(parents=True, exist_ok=True)
@@ -99,11 +144,12 @@ def load_to_sql(
 
     _create_indexes(conn)
     conn.close()
+
+    if views_path is not None:
+        apply_views(db_file, views_path)
     return row_counts
 
 
 def get_connection(db_path: Path | str = DEFAULT_DB_PATH):
     """Return a sqlite3 connection for querying the analytics database."""
-    import sqlite3
-
     return sqlite3.connect(str(db_path))

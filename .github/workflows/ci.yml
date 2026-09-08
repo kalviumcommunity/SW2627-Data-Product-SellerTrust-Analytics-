@@ -21,7 +21,9 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Lint with ruff
-        run: ruff check src/ tests/
+        # Whole repo, not just src/ and tests/. app/ and scripts/ were unlinted,
+        # which is how an import-sort error sat in app/scorecard.py unnoticed.
+        run: ruff check .
 
   test:
     name: Test
@@ -34,6 +36,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest scipy pyyaml plotly
+          # pytest only — everything the app itself imports must come from
+          # requirements.txt, so CI fails if a runtime dep goes undeclared.
+          pip install pytest
       - name: Run tests
         run: pytest tests/ -v
