@@ -70,7 +70,8 @@ def create_tables(db_path: Path | str = DEFAULT_DB_PATH) -> None:
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
 
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS seller_order_fact (
             order_id TEXT NOT NULL,
             seller_id TEXT NOT NULL,
@@ -97,9 +98,11 @@ def create_tables(db_path: Path | str = DEFAULT_DB_PATH) -> None:
             response_time_hours REAL,
             sentiment_bucket TEXT
         )
-    """)
+    """
+    )
 
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS seller_metrics (
             seller_id TEXT NOT NULL,
             total_orders INTEGER,
@@ -112,7 +115,8 @@ def create_tables(db_path: Path | str = DEFAULT_DB_PATH) -> None:
             cancellation_rate_proxy REAL,
             eligible_for_risk_score INTEGER
         )
-    """)
+    """
+    )
 
     _create_indexes(conn)
     conn.close()
@@ -150,7 +154,11 @@ def load_to_sql(
 
     if views_path is not None:
         apply_views(db_file, views_path)
-    log.info("Loaded SQL tables into %s: %s", db_file, ", ".join(f"{name}={count} rows" for name, count in row_counts.items()))
+    log.info(
+        "Loaded SQL tables into %s: %s",
+        db_file,
+        ", ".join(f"{name}={count} rows" for name, count in row_counts.items()),
+    )
     return row_counts
 
 

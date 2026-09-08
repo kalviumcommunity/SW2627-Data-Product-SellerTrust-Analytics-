@@ -62,8 +62,7 @@ class BuildPanelTests(unittest.TestCase):
 
     def test_target_is_the_following_months_rate(self):
         fact = make_fact(
-            month_of_orders("s1", "2018-01", 10, cancelled=0)
-            + month_of_orders("s1", "2018-02", 10, cancelled=3)
+            month_of_orders("s1", "2018-01", 10, cancelled=0) + month_of_orders("s1", "2018-02", 10, cancelled=3)
         )
         panel = build_seller_month_panel(fact)
         january = panel[panel["month"].astype(str) == "2018-01"].iloc[0]
@@ -73,8 +72,7 @@ class BuildPanelTests(unittest.TestCase):
     def test_non_consecutive_months_do_not_become_the_target(self):
         """A gap in trading must not make a distant month masquerade as 'next month'."""
         fact = make_fact(
-            month_of_orders("s1", "2018-01", 10, cancelled=0)
-            + month_of_orders("s1", "2018-08", 10, cancelled=5)
+            month_of_orders("s1", "2018-01", 10, cancelled=0) + month_of_orders("s1", "2018-08", 10, cancelled=5)
         )
         panel = build_seller_month_panel(fact)
         january = panel[panel["month"].astype(str) == "2018-01"].iloc[0]
@@ -82,8 +80,7 @@ class BuildPanelTests(unittest.TestCase):
 
     def test_target_does_not_leak_across_sellers(self):
         fact = make_fact(
-            month_of_orders("s1", "2018-01", 10, cancelled=0)
-            + month_of_orders("s2", "2018-02", 10, cancelled=8)
+            month_of_orders("s1", "2018-01", 10, cancelled=0) + month_of_orders("s2", "2018-02", 10, cancelled=8)
         )
         panel = build_seller_month_panel(fact)
         first = panel[panel["seller_id"] == "s1"].iloc[0]
@@ -141,9 +138,7 @@ class TrainModelTests(unittest.TestCase):
             train_next_month_model(self._panel_over_months(), target_column="next_month_nonsense")
 
     def test_too_little_history_is_rejected(self):
-        fact = make_fact(
-            month_of_orders("s1", "2018-01", 10) + month_of_orders("s1", "2018-02", 10)
-        )
+        fact = make_fact(month_of_orders("s1", "2018-01", 10) + month_of_orders("s1", "2018-02", 10))
         with self.assertRaises(ValueError):
             train_next_month_model(build_seller_month_panel(fact))
 

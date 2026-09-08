@@ -20,12 +20,14 @@ from src.trend_detection import compute_seller_review_trends, run_trend_detectio
 def seller_frame(seller_id: str, scores: list, start: datetime | None = None, spacing_days: int = 30) -> pd.DataFrame:
     """One seller's review history, one order per point, evenly spaced in time."""
     start = start or datetime(2018, 1, 1)
-    return pd.DataFrame({
-        "seller_id": [seller_id] * len(scores),
-        "order_id": [f"{seller_id}-o{i}" for i in range(len(scores))],
-        "order_purchase_timestamp": [start + timedelta(days=i * spacing_days) for i in range(len(scores))],
-        "review_score": scores,
-    })
+    return pd.DataFrame(
+        {
+            "seller_id": [seller_id] * len(scores),
+            "order_id": [f"{seller_id}-o{i}" for i in range(len(scores))],
+            "order_purchase_timestamp": [start + timedelta(days=i * spacing_days) for i in range(len(scores))],
+            "review_score": scores,
+        }
+    )
 
 
 class TrendFlagTests(unittest.TestCase):
@@ -99,10 +101,13 @@ class EligibilityTests(unittest.TestCase):
 
 class InputHandlingTests(unittest.TestCase):
     def test_sellers_are_scored_independently(self):
-        frame = pd.concat([
-            seller_frame("falling", [5, 5, 4, 4, 3, 3, 2, 2, 1, 1]),
-            seller_frame("rising", [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]),
-        ], ignore_index=True)
+        frame = pd.concat(
+            [
+                seller_frame("falling", [5, 5, 4, 4, 3, 3, 2, 2, 1, 1]),
+                seller_frame("rising", [1, 1, 2, 2, 3, 3, 4, 4, 5, 5]),
+            ],
+            ignore_index=True,
+        )
         flags = compute_seller_review_trends(frame).set_index("seller_id")["trend_flag"].to_dict()
         self.assertEqual(flags, {"falling": "declining", "rising": "improving"})
 

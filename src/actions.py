@@ -83,7 +83,7 @@ def _assign_action(
     """
     thresholds = _get_thresholds()
 
-    if pd.isna(trust_score):
+    if trust_score is None or pd.isna(trust_score):
         return ACTION_MONITOR
 
     if trust_score < thresholds["escalate_score"]:

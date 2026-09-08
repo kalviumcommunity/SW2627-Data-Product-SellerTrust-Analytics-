@@ -21,11 +21,13 @@ def configure_pipeline_logging(
     logger replaces only the handler owned by this module, which keeps repeated
     pipeline runs in the same process safe.
     """
-    configured_level = level or os.getenv("PIPELINE_LOG_LEVEL", "INFO")
-    if isinstance(configured_level, str):
-        configured_level = getattr(logging, configured_level.upper(), None)
+    requested_level: str | int = level if level is not None else os.getenv("PIPELINE_LOG_LEVEL", "INFO")
+    if isinstance(requested_level, str):
+        configured_level = getattr(logging, requested_level.upper(), None)
         if not isinstance(configured_level, int):
             raise ValueError("PIPELINE_LOG_LEVEL must be a valid logging level")
+    else:
+        configured_level = requested_level
 
     directory = Path(log_dir)
     directory.mkdir(parents=True, exist_ok=True)
@@ -40,7 +42,7 @@ def configure_pipeline_logging(
 
     filename = directory / f"pipeline_{datetime.now():%Y%m%d}.log"
     handler = logging.FileHandler(filename, encoding="utf-8")
-    handler._seller_trust_handler = True
+    setattr(handler, "_seller_trust_handler", True)
     handler.setLevel(configured_level)
     handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
     logger.addHandler(handler)

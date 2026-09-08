@@ -1,0 +1,5 @@
+# Development and quality tooling
+ruff>=0.6,<1.0
+black>=24.0,<26.0
+mypy>=1.10,<2.0
+types-PyYAML>=6.0

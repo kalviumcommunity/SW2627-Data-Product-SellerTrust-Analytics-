@@ -80,7 +80,9 @@ def _monthly_history(fact: pd.DataFrame, seller_id: str) -> list[dict[str, Any]]
         {
             "month": str(month),
             "orders": int(row["orders"]),
-            "average_review_score": None if pd.isna(row["average_review_score"]) else float(row["average_review_score"]),
+            "average_review_score": (
+                None if pd.isna(row["average_review_score"]) else float(row["average_review_score"])
+            ),
             "late_delivery_rate": None if pd.isna(row["late_delivery_rate"]) else float(row["late_delivery_rate"]),
         }
         for month, row in monthly.iterrows()
@@ -140,8 +142,13 @@ def collect_seller_report(
         raise SellerNotFoundError(f"Seller {seller_id!r} is not in the processed metrics.")
     row = matched.iloc[0]
 
-    trend: dict[str, Any] = {"flag": "insufficient_data", "label": TREND_LABELS["insufficient_data"][0],
-                             "description": TREND_LABELS["insufficient_data"][1], "slope": None, "p_value": None}
+    trend: dict[str, Any] = {
+        "flag": "insufficient_data",
+        "label": TREND_LABELS["insufficient_data"][0],
+        "description": TREND_LABELS["insufficient_data"][1],
+        "slope": None,
+        "p_value": None,
+    }
     if trends is not None:
         trend_rows = trends[trends["seller_id"] == seller_id]
         if not trend_rows.empty:
@@ -183,8 +190,8 @@ def collect_seller_report(
             None
             if eligible
             else f"This seller has {int(row['total_orders'])} orders, below the 5-order floor for trust "
-                 "scoring. The metrics below are real but rest on a very small sample; read the risk "
-                 "tier as a triage hint rather than a measurement."
+            "scoring. The metrics below are real but rest on a very small sample; read the risk "
+            "tier as a triage hint rather than a measurement."
         ),
         "risk_tier": row.get("risk_tier", "n/a"),
         "trust_score": None if pd.isna(row.get("trust_score")) else float(row["trust_score"]),

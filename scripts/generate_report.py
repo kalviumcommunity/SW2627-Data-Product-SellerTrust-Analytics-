@@ -96,6 +96,8 @@ def main() -> int:
 
     if args.list_riskiest:
         metrics = inputs["metrics"]
+        if metrics is None:
+            raise RuntimeError("Metrics data is required to list riskiest sellers")
         eligible = metrics[metrics["eligible_for_risk_score"]]
         for _, row in eligible.nsmallest(args.list_riskiest, "trust_score").iterrows():
             print(f"{row['seller_id']}  trust {float(row['trust_score']):5.2f}  {row['risk_tier']}")

@@ -77,8 +77,8 @@ def main():
     print("| # | Seller ID | Flagged | Your Assessment (TP/FP/TN/FN) | Notes |")
     print("|---|-----------|---------|-------------------------------|-------|")
     for i, seller_id in enumerate(review_sellers, 1):
-        is_flagged = "YES" if seller_id in flagged else "NO"
-        print(f"| {i:2d} | {seller_id} | {is_flagged:7s} |                               |       |")
+        flag_label: str = "YES" if seller_id in flagged else "NO"
+        print(f"| {i:2d} | {seller_id} | {flag_label:7s} |                               |       |")
 
 
 if __name__ == "__main__":
