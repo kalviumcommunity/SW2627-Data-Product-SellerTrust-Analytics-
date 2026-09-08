@@ -8,8 +8,11 @@ import numpy as np
 import pandas as pd
 
 from src.data_quality import add_delivery_features
+from src.logging_config import get_pipeline_logger
 from src.risk_tier import add_risk_tiers
 from src.trust_score import calculate_trust_score
+
+log = get_pipeline_logger("pipeline")
 
 REQUIRED_FILES = {
     "orders": "olist_orders_dataset.csv",
@@ -26,10 +29,12 @@ def load_olist_sources(raw_directory: str | Path) -> dict[str, pd.DataFrame]:
     missing = [filename for filename in REQUIRED_FILES.values() if not (raw_path / filename).is_file()]
     if missing:
         raise FileNotFoundError("Missing required raw files: " + ", ".join(missing))
-    return {
+    sources = {
         name: pd.read_csv(raw_path / filename)
         for name, filename in REQUIRED_FILES.items()
     }
+    log.info("Loaded raw sources: %s", ", ".join(f"{name}={len(frame)} rows" for name, frame in sources.items()))
+    return sources
 
 
 def profile_frame(frame: pd.DataFrame) -> pd.DataFrame:
@@ -164,6 +169,7 @@ def run_pipeline(raw_directory: str | Path, output_directory: str | Path) -> dic
     """Run the repeatable Day 1–9 workflow and write dashboard-ready CSV outputs."""
     output_path = Path(output_directory)
     output_path.mkdir(parents=True, exist_ok=True)
+    log.info("Pipeline started: raw_dir=%s output_dir=%s", raw_directory, output_directory)
     sources = load_olist_sources(raw_directory)
     cleaned = clean_sources(sources)
     fact = build_seller_order_fact(cleaned)
@@ -172,4 +178,6 @@ def run_pipeline(raw_directory: str | Path, output_directory: str | Path) -> dic
     metrics = add_risk_tiers(metrics)
     for name, frame in {"seller_order_fact": fact, "seller_metrics": metrics}.items():
         frame.to_csv(output_path / f"{name}.csv", index=False)
+        log.info("Wrote %s: %s rows", name, len(frame))
+    log.info("Pipeline completed")
     return {"seller_order_fact": fact, "seller_metrics": metrics}

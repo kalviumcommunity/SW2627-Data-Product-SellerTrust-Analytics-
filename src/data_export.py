@@ -7,9 +7,11 @@ from pathlib import Path
 import pandas as pd
 
 from src.actions import recommend_actions
+from src.logging_config import get_pipeline_logger
 from src.sql_loader import DEFAULT_DB_PATH, load_to_sql
 
 DEFAULT_OUTPUT_DIR = Path("data/processed")
+log = get_pipeline_logger("data_export")
 
 
 def export_seller_report(
@@ -24,6 +26,7 @@ def export_seller_report(
     report = recommend_actions(seller_metrics)
     report_path = output_path / filename
     report.to_csv(report_path, index=False)
+    log.info("Exported seller report %s: %s rows", report_path, len(report))
     return report_path
 
 
@@ -50,6 +53,7 @@ def export_filtered_report(
 
     report_path = output_path / filename
     report.to_csv(report_path, index=False)
+    log.info("Exported filtered report %s: %s rows", report_path, len(report))
     return report_path
 
 
@@ -78,4 +82,5 @@ def full_refresh(
         report.to_csv(report_path, index=False)
         counts["seller_report"] = len(report)
 
+    log.info("Full refresh completed: %s", ", ".join(f"{name}={count} rows" for name, count in counts.items()))
     return counts

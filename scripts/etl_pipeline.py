@@ -9,23 +9,21 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 import time
 from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-log = logging.getLogger("etl_pipeline")
+from src.logging_config import configure_pipeline_logging, get_pipeline_logger
+
+log = get_pipeline_logger("etl")
 
 
 def run_etl(
     raw_dir: str = "data/raw",
     output_dir: str = "data/processed",
     db_path: str = "data/trust_analytics.db",
+    log_dir: str = "logs",
+    log_level: str | None = None,
     skip_sql: bool = False,
     skip_anomaly: bool = False,
     skip_actions: bool = False,
@@ -35,6 +33,7 @@ def run_etl(
 
     Returns a dict of row counts per output. Raises on failure.
     """
+    configure_pipeline_logging(log_dir=log_dir, level=log_level)
     start = time.time()
     counts: dict[str, int] = {}
 
@@ -126,6 +125,13 @@ def main() -> int:
     parser.add_argument("--raw-dir", default="data/raw", help="Raw CSV directory.")
     parser.add_argument("--output-dir", default="data/processed", help="Output directory.")
     parser.add_argument("--db-path", default="data/trust_analytics.db", help="SQLite DB path.")
+    parser.add_argument("--log-dir", default="logs", help="Directory for date-stamped pipeline logs.")
+    parser.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default=None,
+        help="Log level. Defaults to PIPELINE_LOG_LEVEL or INFO.",
+    )
     parser.add_argument("--skip-sql", action="store_true", help="Skip SQL database load.")
     parser.add_argument("--skip-anomaly", action="store_true", help="Skip anomaly detection.")
     parser.add_argument("--skip-actions", action="store_true", help="Skip action recommendations.")
@@ -137,6 +143,8 @@ def main() -> int:
             raw_dir=args.raw_dir,
             output_dir=args.output_dir,
             db_path=args.db_path,
+            log_dir=args.log_dir,
+            log_level=args.log_level,
             skip_sql=args.skip_sql,
             skip_anomaly=args.skip_anomaly,
             skip_actions=args.skip_actions,
