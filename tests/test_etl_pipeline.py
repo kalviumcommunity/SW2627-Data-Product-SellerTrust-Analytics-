@@ -4,9 +4,9 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from sample_olist_data import write_sample_raw_files
-
 from scripts.etl_pipeline import main, run_etl
+
+from .sample_olist_data import write_sample_raw_files
 
 
 class EtlPipelineTests(unittest.TestCase):
