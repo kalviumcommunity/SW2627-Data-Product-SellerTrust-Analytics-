@@ -8,6 +8,7 @@ import pandas as pd
 
 from src.actions import recommend_actions
 from src.logging_config import get_pipeline_logger
+from src.pipeline_cache import load_cached_csv
 from src.sql_loader import DEFAULT_DB_PATH, load_to_sql
 
 DEFAULT_OUTPUT_DIR = Path("data/processed")
@@ -76,7 +77,7 @@ def full_refresh(
 
     metrics_path = Path(output_dir) / "seller_metrics.csv"
     if metrics_path.is_file():
-        metrics = pd.read_csv(metrics_path)
+        metrics = load_cached_csv(metrics_path)
         report = recommend_actions(metrics)
         report_path = Path(output_dir) / "seller_report.csv"
         report.to_csv(report_path, index=False)

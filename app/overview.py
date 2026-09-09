@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.pipeline_cache import load_cached_csv
 from src.trust_score import calculate_trust_score
 
 DEFAULT_SELLER_METRICS_PATH = Path("data/processed/seller_metrics.csv")
@@ -21,7 +22,7 @@ def load_seller_metrics(path: str | Path = DEFAULT_SELLER_METRICS_PATH) -> pd.Da
     metrics_path = Path(path)
     if not metrics_path.is_file():
         raise FileNotFoundError(f"seller metrics file not found: {metrics_path}")
-    return pd.read_csv(metrics_path)
+    return load_cached_csv(metrics_path)
 
 
 def prepare_seller_metrics(metrics: pd.DataFrame) -> pd.DataFrame:

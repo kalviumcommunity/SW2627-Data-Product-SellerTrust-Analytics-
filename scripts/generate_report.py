@@ -21,6 +21,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.actions import recommend_actions
+from src.pipeline_cache import load_cached_csv
 from src.seller_report import (
     SellerNotFoundError,
     build_history_chart,
@@ -44,7 +45,7 @@ def load_inputs(processed_dir: Path) -> dict[str, pd.DataFrame | None]:
         path = processed_dir / filename
         optional[key] = pd.read_csv(path) if path.exists() else None
 
-    return {"metrics": pd.read_csv(metrics_path), "fact": pd.read_csv(fact_path), **optional}
+    return {"metrics": load_cached_csv(metrics_path), "fact": load_cached_csv(fact_path), **optional}
 
 
 def generate(seller_id: str, inputs: dict, output_dir: Path, with_chart: bool = True) -> Path:

@@ -171,7 +171,10 @@ def run_pipeline(raw_directory: str | Path, output_directory: str | Path) -> dic
     metrics = calculate_trust_score(metrics)
     metrics = add_risk_tiers(metrics)
     for name, frame in {"seller_order_fact": fact, "seller_metrics": metrics}.items():
-        frame.to_csv(output_path / f"{name}.csv", index=False)
+        csv_path = output_path / f"{name}.csv"
+        frame.to_csv(csv_path, index=False)
+        # Keep CSV for compatibility while providing a faster typed reload format.
+        frame.to_parquet(output_path / f"{name}.parquet", index=False)
         log.info("Wrote %s: %s rows", name, len(frame))
     log.info("Pipeline completed")
     return {"seller_order_fact": fact, "seller_metrics": metrics}

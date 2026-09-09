@@ -21,12 +21,14 @@ from pathlib import Path
 import pandas as pd
 from scipy import stats
 
+from src.pipeline_cache import load_cached_csv
+
 TOP_N = 10
 
 
 def _load(processed_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Load seller metrics joined to trends and anomalies, plus the order-level fact table."""
-    metrics = pd.read_csv(processed_dir / "seller_metrics.csv")
+    metrics = load_cached_csv(processed_dir / "seller_metrics.csv")
 
     trends_path = processed_dir / "seller_trends.csv"
     if trends_path.exists():
@@ -53,7 +55,7 @@ def _load(processed_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
         metrics["anomaly_count"] = 0
     metrics["anomaly_count"] = metrics["anomaly_count"].fillna(0).astype(int)
 
-    fact = pd.read_csv(processed_dir / "seller_order_fact.csv")
+    fact = load_cached_csv(processed_dir / "seller_order_fact.csv")
     return metrics, fact
 
 

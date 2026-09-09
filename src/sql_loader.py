@@ -6,9 +6,8 @@ import re
 import sqlite3
 from pathlib import Path
 
-import pandas as pd
-
 from src.logging_config import get_pipeline_logger
+from src.pipeline_cache import load_cached_csv
 
 DEFAULT_DB_PATH = Path("data/trust_analytics.db")
 DEFAULT_VIEWS_PATH = Path(__file__).resolve().parent.parent / "sql" / "views.sql"
@@ -145,7 +144,7 @@ def load_to_sql(
             conn.close()
             raise FileNotFoundError(f"Missing CSV: {csv_path}")
 
-        df = pd.read_csv(csv_path)
+        df = load_cached_csv(csv_path)
         df.to_sql(table_name, conn, if_exists="replace", index=False)
         row_counts[table_name] = len(df)
 

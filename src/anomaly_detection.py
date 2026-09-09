@@ -35,7 +35,7 @@ def detect_iqr_outliers(
     q3 = numeric.quantile(0.75)
     iqr = q3 - q1
 
-    if iqr == 0:
+    if pd.isna(iqr) or iqr == 0:
         return pd.Series(False, index=series.index)
 
     lower_bound = q1 - multiplier * iqr
@@ -62,7 +62,7 @@ def detect_zscore_anomalies(
     mean = numeric.mean()
     std = numeric.std(ddof=0)
 
-    if std == 0 or pd.isna(std):
+    if pd.isna(std) or std == 0:
         return pd.Series(False, index=series.index)
 
     z_scores = np.abs((numeric - mean) / std)

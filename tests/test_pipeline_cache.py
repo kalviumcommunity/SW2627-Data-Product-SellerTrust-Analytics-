@@ -46,6 +46,15 @@ class LoadCachedCsvTests(unittest.TestCase):
         load_cached_csv(self.csv_path, use_parquet_cache=True)
         self.assertGreater(parquet_path.stat().st_mtime, mtime_before)
 
+    def test_parquet_missing_values_match_csv_missing_values(self):
+        self.df["missing"] = pd.Series([pd.NA, "value", pd.NA], dtype="string")
+        self.df.to_csv(self.csv_path, index=False)
+        load_cached_csv(self.csv_path, use_parquet_cache=True)
+
+        result = load_cached_csv(self.csv_path, use_parquet_cache=True)
+        self.assertTrue(pd.isna(result.loc[0, "missing"]))
+        self.assertFalse(result.loc[1, "missing"] is pd.NA)
+
 
 class ProfilePipelineTests(unittest.TestCase):
     def test_profile_returns_string(self):
