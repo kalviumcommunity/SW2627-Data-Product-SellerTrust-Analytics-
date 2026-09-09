@@ -40,6 +40,11 @@ class AnomalyDetectionTests(unittest.TestCase):
         flags = detect_iqr_outliers(series)
         self.assertFalse(flags.any())
 
+    def test_iqr_all_missing_values_produces_no_outliers(self):
+        series = pd.Series([pd.NA, pd.NA], dtype="Float64")
+        flags = detect_iqr_outliers(series)
+        self.assertFalse(flags.any())
+
     def test_zscore_detects_extreme_value(self):
         series = pd.Series([1, 2, 2, 3, 2, 2, 3, 2, 2, 50])
         flags = detect_z_score_outliers(series, threshold=2.5)

@@ -191,3 +191,5 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(len(result["seller_metrics"]), 1)
             self.assertTrue((output / "seller_order_fact.csv").exists())
             self.assertTrue((output / "seller_metrics.csv").exists())
+            self.assertTrue((output / "seller_order_fact.parquet").exists())
+            self.assertTrue((output / "seller_metrics.parquet").exists())

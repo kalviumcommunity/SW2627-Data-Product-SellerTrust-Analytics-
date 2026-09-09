@@ -53,14 +53,15 @@ def run_etl(
 
     # Step 2: Trust scoring
     log.info("Step 2/6 — Computing trust scores")
-    import pandas as pd
-
     from src.trust_score import calculate_trust_score
 
     metrics_path = Path(output_dir) / "seller_metrics.csv"
-    metrics = pd.read_csv(metrics_path)
+    from src.pipeline_cache import load_cached_csv
+
+    metrics = load_cached_csv(metrics_path)
     scored = calculate_trust_score(metrics)
     scored.to_csv(metrics_path, index=False)
+    scored.to_parquet(metrics_path.with_suffix(".parquet"), index=False)
     log.info("  Trust scores computed for %s sellers", len(scored))
 
     # Step 3: Anomaly detection

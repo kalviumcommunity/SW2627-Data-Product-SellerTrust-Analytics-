@@ -8,6 +8,7 @@ import pstats
 from functools import lru_cache
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 
@@ -20,7 +21,12 @@ def load_cached_csv(csv_path: Path, use_parquet_cache: bool = True) -> pd.DataFr
     if use_parquet_cache:
         parquet_path = csv_path.with_suffix(".parquet")
         if parquet_path.is_file() and parquet_path.stat().st_mtime >= csv_path.stat().st_mtime:
-            return pd.read_parquet(parquet_path)
+            cached = pd.read_parquet(parquet_path)
+            # Keep missing-value behavior consistent with pandas.read_csv.
+            for column in cached.columns:
+                if pd.api.types.is_extension_array_dtype(cached[column].dtype):
+                    cached[column] = cached[column].astype(object).where(cached[column].notna(), np.nan)
+            return cached
 
     df = pd.read_csv(csv_path)
 
