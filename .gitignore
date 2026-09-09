@@ -8,3 +8,4 @@ data/processed/*.csv
 data/processed/*.parquet
 logs/*.log
 reports/
+.coverage

@@ -13,6 +13,17 @@ known-first-party = ["src", "app"]
 testpaths = ["tests"]
 pythonpath = ["."]
 
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+fail_under = 80
+
 [tool.black]
 line-length = 120
 target-version = ["py311"]
