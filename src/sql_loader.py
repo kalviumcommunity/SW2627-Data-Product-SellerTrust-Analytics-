@@ -8,6 +8,7 @@ from pathlib import Path
 
 from src.logging_config import get_pipeline_logger
 from src.pipeline_cache import load_cached_csv
+from src.taxonomy import add_canonical_risk_tier
 
 DEFAULT_DB_PATH = Path("data/trust_analytics.db")
 DEFAULT_VIEWS_PATH = Path(__file__).resolve().parent.parent / "sql" / "views.sql"
@@ -145,6 +146,12 @@ def load_to_sql(
             raise FileNotFoundError(f"Missing CSV: {csv_path}")
 
         df = load_cached_csv(csv_path)
+        if table_name == "seller_metrics" and "risk_tier" not in df.columns:
+            from src.trust_score import calculate_trust_score
+
+            scored = df.copy()
+            scored["eligible_for_risk_score"] = scored["eligible_for_risk_score"].astype(bool)
+            df = add_canonical_risk_tier(calculate_trust_score(scored))
         df.to_sql(table_name, conn, if_exists="replace", index=False)
         row_counts[table_name] = len(df)
 

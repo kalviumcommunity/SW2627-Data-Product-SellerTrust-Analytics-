@@ -19,6 +19,7 @@ WITH trust_scored AS (
         sm.average_response_time_hours,
         sm.cancellation_rate_proxy,
         sm.eligible_for_risk_score,
+        sm.risk_tier,
         -- Trust score calculation (weights: delivery 30%, review 30%, cancellation 20%, negative_review 20%)
         CASE
             WHEN sm.eligible_for_risk_score = 1 THEN
@@ -47,15 +48,7 @@ ranked AS (
                        AND ts2.trust_score < trust_scored.trust_score)
                 )
             ELSE NULL
-        END AS trust_score_percentile,
-        -- Canonical seller risk tier, based on the same score bins as Python.
-        CASE
-            WHEN eligible_for_risk_score = 0 OR trust_score IS NULL THEN 'Insufficient Data'
-            WHEN trust_score <= 45 THEN 'High-Risk'
-            WHEN trust_score <= 60 THEN 'Return-Prone'
-            WHEN trust_score <= 75 THEN 'Inconsistent'
-            ELSE 'Reliable'
-        END AS risk_tier
+        END AS trust_score_percentile
     FROM trust_scored
 )
 SELECT
