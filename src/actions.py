@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.anomaly_detection import compute_seller_anomalies
 from src.config_loader import get_config
+from src.taxonomy import add_canonical_risk_tier
 from src.trust_score import calculate_trust_score
 
 ACTION_ESCALATE = "Escalate"
@@ -121,7 +122,6 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
     """
     prepared = seller_metrics.copy()
     prepared["eligible_for_risk_score"] = prepared["eligible_for_risk_score"].astype(bool)
-    cfg = get_config()
     scored = calculate_trust_score(prepared)
     anomalies = compute_seller_anomalies(prepared)
     merged = scored.merge(
@@ -133,12 +133,7 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
     merged["anomaly_count"] = merged["anomaly_count"].fillna(0).astype(int)
     merged["is_anomaly"] = merged["any_anomaly"].fillna(False).astype(bool)
 
-    merged["risk_tier"] = pd.cut(
-        merged["trust_score"],
-        bins=cfg["risk_tier_bins"]["bins"],
-        labels=cfg["risk_tier_bins"]["labels"],
-    ).astype("string")
-    merged.loc[merged["trust_score"].isna(), "risk_tier"] = "Insufficient Data"
+    merged = add_canonical_risk_tier(merged)
 
     merged["recommended_action"] = merged.apply(
         lambda row: _assign_action(

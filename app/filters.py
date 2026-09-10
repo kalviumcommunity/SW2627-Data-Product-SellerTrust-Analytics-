@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.sql_loader import DEFAULT_DB_PATH
+from src.taxonomy import add_canonical_risk_tier
 from src.trust_score import calculate_trust_score
 
 RISK_TIERS = ["All", "Reliable", "Inconsistent", "Return-Prone", "High-Risk"]
@@ -22,13 +23,7 @@ def assign_risk_tier(metrics: pd.DataFrame) -> pd.DataFrame:
     prepared = metrics.copy()
     prepared["eligible_for_risk_score"] = prepared["eligible_for_risk_score"].astype(bool)
     scored = calculate_trust_score(prepared)
-    scored["risk_tier"] = pd.cut(
-        scored["trust_score"],
-        bins=[-0.01, 45, 60, 75, 100],
-        labels=["High-Risk", "Return-Prone", "Inconsistent", "Reliable"],
-    ).astype("string")
-    scored.loc[scored["trust_score"].isna(), "risk_tier"] = "Insufficient Data"
-    return scored
+    return add_canonical_risk_tier(scored)
 
 
 def get_category_options(db_path: str | Path = DEFAULT_DB_PATH) -> list[str]:
