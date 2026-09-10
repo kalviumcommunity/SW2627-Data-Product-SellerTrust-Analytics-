@@ -25,6 +25,12 @@ trust_score_weights:
 # Eligibility
 min_orders_for_risk_score: 5
 
+# Canonical seller risk tiers are based on the final trust score. Recommended
+# actions remain a separate operational decision.
+risk_tier_bins:
+  bins: [-0.01, 45, 60, 75, 100]
+  labels: ["High-Risk", "Return-Prone", "Inconsistent", "Reliable"]
+
 # Anomaly detection thresholds
 anomaly_detection:
   zscore_threshold: 3.0

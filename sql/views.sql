@@ -19,6 +19,7 @@ WITH trust_scored AS (
         sm.average_response_time_hours,
         sm.cancellation_rate_proxy,
         sm.eligible_for_risk_score,
+        sm.risk_tier,
         -- Trust score calculation (weights: delivery 30%, review 30%, cancellation 20%, negative_review 20%)
         CASE
             WHEN sm.eligible_for_risk_score = 1 THEN
@@ -47,20 +48,7 @@ ranked AS (
                        AND ts2.trust_score < trust_scored.trust_score)
                 )
             ELSE NULL
-        END AS trust_score_percentile,
-        -- Score band, NOT the same thing as seller_metrics.risk_tier.
-        -- seller_metrics.risk_tier is ESCALATE/COACH/MONITOR, driven by the per-metric
-        -- thresholds in src/config/thresholds.yaml. This is a plain banding of the trust
-        -- score. Two different questions, so two different column names: reusing
-        -- "risk_tier" here would put two incompatible vocabularies in one database.
-        CASE
-            WHEN eligible_for_risk_score = 0 THEN 'insufficient_data'
-            WHEN trust_score IS NULL THEN 'insufficient_data'
-            WHEN trust_score >= 80 THEN 'low_risk'
-            WHEN trust_score >= 60 THEN 'medium_risk'
-            WHEN trust_score >= 40 THEN 'high_risk'
-            ELSE 'critical_risk'
-        END AS trust_score_band
+        END AS trust_score_percentile
     FROM trust_scored
 )
 SELECT
@@ -76,7 +64,7 @@ SELECT
     eligible_for_risk_score,
     trust_score,
     trust_score_percentile,
-    trust_score_band
+    risk_tier
 FROM ranked;
 
 

@@ -134,11 +134,8 @@ class ApplyViewsTests(unittest.TestCase):
 
 
 class ViewContentTests(unittest.TestCase):
-    def test_seller_view_does_not_reuse_the_risk_tier_name(self):
-        """seller_metrics.risk_tier is ESCALATE/COACH/MONITOR; the view bands the score.
-
-        Two different questions must not share one column name inside one database.
-        """
+    def test_seller_view_uses_the_canonical_risk_tier(self):
+        """The SQL view uses the same seller risk-tier vocabulary as Python."""
         with TemporaryDirectory() as temp_dir:
             processed = Path(temp_dir) / "processed"
             write_processed_csvs(processed)
@@ -149,8 +146,8 @@ class ViewContentTests(unittest.TestCase):
                 columns = [row[1] for row in conn.execute("PRAGMA table_info(vw_seller_trust_metrics)")]
             finally:
                 conn.close()
-            self.assertIn("trust_score_band", columns)
-            self.assertNotIn("risk_tier", columns)
+            self.assertIn("risk_tier", columns)
+            self.assertNotIn("trust_score_band", columns)
 
     def test_ineligible_sellers_have_no_trust_score_in_the_view(self):
         with TemporaryDirectory() as temp_dir:
@@ -161,12 +158,12 @@ class ViewContentTests(unittest.TestCase):
             conn = sqlite3.connect(str(db_path))
             try:
                 row = conn.execute(
-                    "SELECT trust_score, trust_score_band FROM vw_seller_trust_metrics WHERE seller_id = 's2'"
+                    "SELECT trust_score, risk_tier FROM vw_seller_trust_metrics WHERE seller_id = 's2'"
                 ).fetchone()
             finally:
                 conn.close()
             self.assertIsNone(row[0])
-            self.assertEqual(row[1], "insufficient_data")
+            self.assertEqual(row[1], "Insufficient Data")
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 
 from app.overview import prepare_seller_metrics
 from app.theme import RISK_TIER_COLORS, apply_chart_polish
+from src.taxonomy import add_canonical_risk_tier
 
 SEGMENT_ORDER = ["Reliable", "Inconsistent", "Return-Prone", "High-Risk"]
 
@@ -13,13 +14,7 @@ SEGMENT_ORDER = ["Reliable", "Inconsistent", "Return-Prone", "High-Risk"]
 def prepare_segment_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
     """Prepare seller metrics with risk tiers for the Behaviour Segments tab."""
     prepared = prepare_seller_metrics(metrics)
-    if "risk_tier" not in prepared.columns:
-        prepared["risk_tier"] = pd.cut(
-            prepared["trust_score"],
-            bins=[-0.01, 45, 60, 75, 100],
-            labels=["High-Risk", "Return-Prone", "Inconsistent", "Reliable"],
-        ).astype("string")
-        prepared.loc[prepared["trust_score"].isna(), "risk_tier"] = "Insufficient Data"
+    prepared = add_canonical_risk_tier(prepared)
     return prepared[prepared["risk_tier"].isin(SEGMENT_ORDER)].copy()
 
 
