@@ -311,9 +311,7 @@ def build_buyer_dropoff_funnel(order_fact: pd.DataFrame) -> go.Figure:
         }
 
     base_count = stage_counts["Order Placed"]
-    stage_percentages = [
-        round((count / base_count) * 100, 1) if base_count else 0.0 for count in stage_counts.values()
-    ]
+    stage_percentages = [round((count / base_count) * 100, 1) if base_count else 0.0 for count in stage_counts.values()]
 
     fig = go.Figure(
         go.Funnel(

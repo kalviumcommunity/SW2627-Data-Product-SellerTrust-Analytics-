@@ -59,4 +59,3 @@ def apply_chart_polish(
     fig.update_xaxes(automargin=True)
     fig.update_yaxes(automargin=True)
     return fig
-
