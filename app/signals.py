@@ -8,6 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from app.overview import prepare_seller_metrics
+from app.theme import RISK_TIER_COLORS, SENTIMENT_COLORS, apply_chart_polish
 from src.sql_loader import DEFAULT_DB_PATH
 from src.trust_score import calculate_trust_score
 
@@ -75,11 +76,11 @@ def build_return_rate_scatter(metrics: pd.DataFrame) -> go.Figure:
             "late_delivery_rate": "Late Delivery Rate",
         },
         title="Return Rate Proxy vs Trust Score",
+        color_discrete_map=RISK_TIER_COLORS,
     )
     fig.update_traces(marker={"opacity": 0.75})
     fig.update_xaxes(tickformat=".0%")
-    fig.update_layout(height=440, margin={"l": 20, "r": 20, "t": 60, "b": 20})
-    return fig
+    return apply_chart_polish(fig, height=440)
 
 
 def build_correlation_heatmap(metrics: pd.DataFrame) -> go.Figure:
@@ -96,8 +97,8 @@ def build_correlation_heatmap(metrics: pd.DataFrame) -> go.Figure:
         labels={"color": "Correlation"},
         title="Risk Signal Correlation Heatmap",
     )
-    fig.update_layout(height=440, margin={"l": 20, "r": 20, "t": 60, "b": 20})
-    return fig
+    fig.update_xaxes(tickangle=-35)
+    return apply_chart_polish(fig, height=440, bottom_margin=95)
 
 
 def build_cohort_comparison(metrics: pd.DataFrame) -> pd.DataFrame:
@@ -227,8 +228,7 @@ def build_trust_score_trend(monthly_metrics: pd.DataFrame) -> go.Figure:
         },
         title="Seller Trust Score Trend Over Time",
     )
-    fig.update_layout(height=420, margin={"l": 20, "r": 20, "t": 60, "b": 20})
-    return fig
+    return apply_chart_polish(fig)
 
 
 def build_monthly_sentiment_bar(order_fact: pd.DataFrame) -> go.Figure:
@@ -264,9 +264,9 @@ def build_monthly_sentiment_bar(order_fact: pd.DataFrame) -> go.Figure:
             "sentiment_bucket": ["negative", "neutral", "positive"],
         },
         color_discrete_map={
-            "negative": "#d62728",
-            "neutral": "#ffbf00",
-            "positive": "#2ca02c",
+            "negative": SENTIMENT_COLORS["negative"],
+            "neutral": SENTIMENT_COLORS["neutral"],
+            "positive": SENTIMENT_COLORS["positive"],
         },
         hover_data={"review_count": True, "sentiment_bucket": True},
         labels={
@@ -276,8 +276,7 @@ def build_monthly_sentiment_bar(order_fact: pd.DataFrame) -> go.Figure:
         },
         title="Monthly Sentiment Distribution",
     )
-    fig.update_layout(height=420, margin={"l": 20, "r": 20, "t": 60, "b": 20})
-    return fig
+    return apply_chart_polish(fig)
 
 
 def build_performance_decay_chart(monthly_metrics: pd.DataFrame) -> go.Figure:
@@ -322,5 +321,4 @@ def build_performance_decay_chart(monthly_metrics: pd.DataFrame) -> go.Figure:
         },
         title="Seller Performance Decay",
     )
-    fig.update_layout(height=420, margin={"l": 20, "r": 20, "t": 60, "b": 20})
-    return fig
+    return apply_chart_polish(fig, bottom_margin=70)

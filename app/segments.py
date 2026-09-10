@@ -5,14 +5,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from app.overview import prepare_seller_metrics
+from app.theme import RISK_TIER_COLORS, apply_chart_polish
 
 SEGMENT_ORDER = ["Reliable", "Inconsistent", "Return-Prone", "High-Risk"]
-SEGMENT_COLORS = {
-    "Reliable": "#2ca02c",
-    "Inconsistent": "#1f77b4",
-    "Return-Prone": "#ffbf00",
-    "High-Risk": "#d62728",
-}
 
 
 def prepare_segment_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
@@ -58,7 +53,7 @@ def build_segment_composition_chart(metrics: pd.DataFrame) -> go.Figure:
         x="risk_tier",
         y="sellers",
         color="risk_tier",
-        color_discrete_map=SEGMENT_COLORS,
+        color_discrete_map=RISK_TIER_COLORS,
         category_orders={"risk_tier": SEGMENT_ORDER},
         hover_data={
             "sellers": True,
@@ -77,9 +72,4 @@ def build_segment_composition_chart(metrics: pd.DataFrame) -> go.Figure:
         },
         title="Seller Behaviour Segment Composition",
     )
-    fig.update_layout(
-        height=420,
-        margin={"l": 20, "r": 20, "t": 60, "b": 20},
-        showlegend=False,
-    )
-    return fig
+    return apply_chart_polish(fig, showlegend=False)
