@@ -165,6 +165,42 @@ class ViewContentTests(unittest.TestCase):
             self.assertIsNone(row[0])
             self.assertEqual(row[1], "Insufficient Data")
 
+    def test_seller_view_uses_python_trust_score_with_missing_metrics(self):
+        with TemporaryDirectory() as temp_dir:
+            processed = Path(temp_dir) / "processed"
+            write_processed_csvs(processed)
+            metrics_path = processed / "seller_metrics.csv"
+            metrics = pd.read_csv(metrics_path)
+            metrics.loc[0, "negative_review_rate"] = None
+            metrics.to_csv(metrics_path, index=False)
+            db_path = Path(temp_dir) / "analytics.db"
+            load_to_sql(processed, db_path)
+            conn = sqlite3.connect(str(db_path))
+            try:
+                score = conn.execute(
+                    "SELECT trust_score FROM vw_seller_trust_metrics WHERE seller_id = 's1'"
+                ).fetchone()[0]
+            finally:
+                conn.close()
+            self.assertIsNone(score)
+
+    def test_monthly_seller_aggregates_are_not_order_weighted(self):
+        with TemporaryDirectory() as temp_dir:
+            db_path = ApplyViewsTests()._loaded_db(temp_dir)
+            conn = sqlite3.connect(str(db_path))
+            try:
+                conn.execute(
+                    "INSERT INTO seller_order_fact (order_id, seller_id, purchase_month) "
+                    "VALUES ('o4', 's1', '2018-02')"
+                )
+                conn.commit()
+                value = conn.execute(
+                    "SELECT avg_orders_per_seller FROM vw_monthly_trends " "WHERE purchase_month = '2018-02'"
+                ).fetchone()[0]
+            finally:
+                conn.close()
+            self.assertEqual(value, 4.0)
+
 
 if __name__ == "__main__":
     unittest.main()

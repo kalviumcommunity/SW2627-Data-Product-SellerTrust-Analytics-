@@ -146,7 +146,7 @@ def load_to_sql(
             raise FileNotFoundError(f"Missing CSV: {csv_path}")
 
         df = load_cached_csv(csv_path)
-        if table_name == "seller_metrics" and "risk_tier" not in df.columns:
+        if table_name == "seller_metrics" and ("trust_score" not in df.columns or "risk_tier" not in df.columns):
             from src.trust_score import calculate_trust_score
 
             scored = df.copy()
