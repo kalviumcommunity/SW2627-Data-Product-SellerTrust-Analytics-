@@ -44,15 +44,16 @@ def prepare_compare_metrics(metrics: pd.DataFrame, selected_sellers: list[str]) 
 
 def format_compare_value(value: object, value_type: str) -> str:
     """Format a seller comparison metric for dashboard display."""
-    if pd.isna(value):
+    numeric_value = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric_value):
         return "N/A"
     if value_type == "percent":
-        return f"{float(value) * 100:.1f}%"
+        return f"{float(numeric_value) * 100:.1f}%"
     if value_type == "count":
-        return f"{int(value):,}"
+        return f"{int(numeric_value):,}"
     if value_type == "hours":
-        return f"{float(value):.1f}h"
-    return f"{float(value):.1f}"
+        return f"{float(numeric_value):.1f}h"
+    return f"{float(numeric_value):.1f}"
 
 
 def build_side_by_side_table(compare_metrics: pd.DataFrame) -> pd.DataFrame:
@@ -174,4 +175,3 @@ def build_risk_badge_summary(compare_metrics: pd.DataFrame) -> pd.DataFrame:
     summary = compare_metrics[["seller_id", "risk_tier", "trust_score", "total_orders"]].copy()
     summary["risk_color"] = summary["risk_tier"].map(RISK_TIER_COLORS).fillna("#8c8c8c")
     return summary
-
