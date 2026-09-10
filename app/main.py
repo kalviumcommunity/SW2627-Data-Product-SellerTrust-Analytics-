@@ -6,6 +6,7 @@ from app.overview import build_overview_kpis, load_seller_metrics
 from app.scorecard import add_alert_badges, build_anomaly_detail_rows
 from app.segments import build_segment_composition_chart, build_segment_summary
 from app.signals import (
+    build_buyer_dropoff_funnel,
     build_cohort_comparison,
     build_correlation_heatmap,
     build_monthly_sentiment_bar,
@@ -228,6 +229,12 @@ with signals_tab:
                     st.warning("Load data/trust_analytics.db to show seller performance trends.")
 
             if order_fact is not None:
+                st.markdown("#### Buyer Drop-Off Funnel")
+                st.plotly_chart(
+                    build_buyer_dropoff_funnel(order_fact),
+                    use_container_width=True,
+                )
+
                 monthly_metrics = prepare_monthly_seller_metrics(order_fact)
                 if monthly_metrics.empty:
                     st.warning("No monthly seller history is available for trend visuals.")

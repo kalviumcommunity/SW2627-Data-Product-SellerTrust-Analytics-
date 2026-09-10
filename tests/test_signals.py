@@ -3,6 +3,7 @@ import unittest
 import pandas as pd
 
 from app.signals import (
+    build_buyer_dropoff_funnel,
     build_cohort_comparison,
     build_correlation_heatmap,
     build_monthly_sentiment_bar,
@@ -116,6 +117,18 @@ class BehaviourSignalTests(unittest.TestCase):
         self.assertEqual(fig.layout.title.text, "Monthly Sentiment Distribution")
         self.assertGreater(len(fig.data), 0)
         self.assertEqual(fig.layout.barmode, "stack")
+
+    def test_buyer_dropoff_funnel_shows_four_trust_journey_stages(self):
+        fig = build_buyer_dropoff_funnel(self.order_fact)
+
+        self.assertEqual(fig.layout.title.text, "Buyer Drop-Off Through Trust Journey")
+        self.assertEqual(
+            list(fig.data[0].y),
+            ["Order Placed", "Delivered", "Reviewed", "Positive Review"],
+        )
+        self.assertEqual(list(fig.data[0].x), [5, 4, 4, 3])
+        self.assertIn("percent initial", fig.data[0].textinfo)
+        self.assertIn("% of placed orders", fig.data[0].hovertemplate)
 
     def test_performance_decay_chart_shows_declining_sellers(self):
         monthly = prepare_monthly_seller_metrics(self.order_fact)
