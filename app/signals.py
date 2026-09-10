@@ -8,7 +8,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from app.overview import prepare_seller_metrics
-from app.theme import RISK_TIER_COLORS, SENTIMENT_COLORS, apply_chart_polish
+from app.theme import (
+    HIGH_RISK_RED,
+    JOURNEY_BLUE,
+    RISK_TIER_COLORS,
+    SENTIMENT_COLORS,
+    TRUSTED_GREEN,
+    WATCHLIST_YELLOW,
+    apply_chart_polish,
+)
 from src.sql_loader import DEFAULT_DB_PATH
 from src.trust_score import calculate_trust_score
 
@@ -277,6 +285,48 @@ def build_monthly_sentiment_bar(order_fact: pd.DataFrame) -> go.Figure:
         title="Monthly Sentiment Distribution",
     )
     return apply_chart_polish(fig)
+
+
+def build_buyer_dropoff_funnel(order_fact: pd.DataFrame) -> go.Figure:
+    """Build a buyer trust-journey funnel from order placement to positive review."""
+    fact = order_fact.copy()
+    if fact.empty or "order_id" not in fact.columns:
+        stage_counts = {
+            "Order Placed": 0,
+            "Delivered": 0,
+            "Reviewed": 0,
+            "Positive Review": 0,
+        }
+    else:
+        fact["order_status"] = fact.get("order_status", pd.Series(dtype="string")).astype("string").str.lower()
+        fact["review_score"] = pd.to_numeric(fact.get("review_score", pd.Series(dtype="float")), errors="coerce")
+        delivered_mask = fact["order_status"].eq("delivered")
+        reviewed_mask = delivered_mask & fact["review_score"].notna()
+        positive_review_mask = delivered_mask & fact["review_score"].ge(4)
+        stage_counts = {
+            "Order Placed": fact["order_id"].nunique(),
+            "Delivered": fact.loc[delivered_mask, "order_id"].nunique(),
+            "Reviewed": fact.loc[reviewed_mask, "order_id"].nunique(),
+            "Positive Review": fact.loc[positive_review_mask, "order_id"].nunique(),
+        }
+
+    base_count = stage_counts["Order Placed"]
+    stage_percentages = [
+        round((count / base_count) * 100, 1) if base_count else 0.0 for count in stage_counts.values()
+    ]
+
+    fig = go.Figure(
+        go.Funnel(
+            y=list(stage_counts.keys()),
+            x=list(stage_counts.values()),
+            textinfo="value+percent initial",
+            marker={"color": [JOURNEY_BLUE, TRUSTED_GREEN, WATCHLIST_YELLOW, HIGH_RISK_RED]},
+            customdata=stage_percentages,
+            hovertemplate="<b>%{y}</b><br>Orders: %{x:,}<br>% of placed orders: %{customdata:.1f}%<extra></extra>",
+        )
+    )
+    fig.update_layout(title="Buyer Drop-Off Through Trust Journey")
+    return apply_chart_polish(fig, height=380, showlegend=False, bottom_margin=40)
 
 
 def build_performance_decay_chart(monthly_metrics: pd.DataFrame) -> go.Figure:

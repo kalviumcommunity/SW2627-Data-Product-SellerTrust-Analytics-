@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 TRUSTED_GREEN = "#2ca02c"
 WATCHLIST_YELLOW = "#ffbf00"
 HIGH_RISK_RED = "#d62728"
+JOURNEY_BLUE = "#2563eb"
 NEUTRAL_GREY = "#8c8c8c"
 
 RISK_TIER_COLORS = {
