@@ -20,17 +20,7 @@ WITH trust_scored AS (
         sm.cancellation_rate_proxy,
         sm.eligible_for_risk_score,
         sm.risk_tier,
-        -- Trust score calculation (weights: delivery 30%, review 30%, cancellation 20%, negative_review 20%)
-        CASE
-            WHEN sm.eligible_for_risk_score = 1 THEN
-                ROUND(
-                    0.30 * (1 - COALESCE(sm.late_delivery_rate, 0)) * 100
-                    + 0.30 * ((COALESCE(sm.average_review_score, 1) - 1) / 4) * 100
-                    + 0.20 * (1 - COALESCE(sm.cancellation_rate_proxy, 0)) * 100
-                    + 0.20 * (1 - COALESCE(sm.negative_review_rate, 0)) * 100
-                , 2)
-            ELSE NULL
-        END AS trust_score
+        sm.trust_score
     FROM seller_metrics sm
 ),
 ranked AS (
@@ -181,10 +171,10 @@ WITH monthly_fact AS (
     GROUP BY purchase_month
 ),
 monthly_seller_metrics AS (
-    -- Aggregate seller_metrics per month (using first order month as proxy)
-    -- Note: seller_metrics doesn't have a time dimension, so we join via fact table
+    -- seller_metrics has no time dimension. Use one seller-month presence row so
+    -- sellers with multiple orders do not receive disproportionate weight.
     SELECT
-        f.purchase_month,
+        smonth.purchase_month,
         COUNT(DISTINCT m.seller_id) AS sellers_with_metrics,
         AVG(m.total_orders) AS avg_orders_per_seller,
         AVG(m.late_delivery_rate) AS avg_late_delivery_rate,
@@ -192,10 +182,13 @@ monthly_seller_metrics AS (
         AVG(m.negative_review_rate) AS avg_negative_review_rate,
         AVG(m.cancellation_rate_proxy) AS avg_cancellation_rate,
         AVG(m.average_response_time_hours) AS avg_response_time_hours_sellers
-    FROM seller_order_fact f
-    JOIN seller_metrics m ON f.seller_id = m.seller_id
-    WHERE f.purchase_month IS NOT NULL
-    GROUP BY f.purchase_month
+    FROM (
+        SELECT DISTINCT purchase_month, seller_id
+        FROM seller_order_fact
+        WHERE purchase_month IS NOT NULL
+    ) AS smonth
+    JOIN seller_metrics m ON smonth.seller_id = m.seller_id
+    GROUP BY smonth.purchase_month
 )
 SELECT
     mf.purchase_month,
