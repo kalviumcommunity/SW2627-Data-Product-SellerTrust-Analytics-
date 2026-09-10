@@ -24,6 +24,9 @@ This project builds an end-to-end analytics pipeline and interactive dashboard t
 | **Behaviour Segments** | Portfolio view grouping sellers into Reliable, Inconsistent, Return-Prone, and High-Risk tiers |
 | **Trust-Risk Actions** | Recommended actions (Escalate / Coach / Monitor) with supporting evidence per flagged seller |
 
+Showcase prep, recording checklist, and section-wise talking points are available in
+[`docs/dashboard-showcase-walkthrough.md`](docs/dashboard-showcase-walkthrough.md).
+
 ---
 
 ## How It Works
