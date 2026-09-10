@@ -1,6 +1,15 @@
 import streamlit as st
 
 from app.actions import build_action_cards, format_evidence_bullets
+from app.compare import (
+    build_difference_highlights,
+    build_risk_badge_summary,
+    build_risk_profile_chart,
+    build_side_by_side_table,
+    build_trust_overlay_chart,
+    get_seller_options,
+    prepare_compare_metrics,
+)
 from app.filters import RISK_TIERS, get_category_options, query_seller_metrics
 from app.overview import build_overview_kpis, load_seller_metrics
 from app.scorecard import add_alert_badges, build_anomaly_detail_rows
@@ -148,13 +157,14 @@ with st.spinner("Loading seller metrics..."):
         filtered_seller_metrics = None
         st.error(f"Unable to query seller metrics from SQLite: {error}")
 
-overview_tab, signals_tab, scorecard_tab, segments_tab, actions_tab = st.tabs(
+overview_tab, signals_tab, scorecard_tab, segments_tab, actions_tab, compare_tab = st.tabs(
     [
         "Trust Overview",
         "Trust vs. Behaviour Signals",
         "Seller Scorecard",
         "Behaviour Segments",
         "Trust-Risk Actions",
+        "Compare Sellers",
     ]
 )
 
@@ -353,3 +363,76 @@ with actions_tab:
                     st.write("Supporting evidence")
                     for evidence in format_evidence_bullets(seller["evidence"]):
                         st.markdown(f"- {evidence}")
+
+with compare_tab:
+    st.subheader("Compare Sellers")
+    if filtered_seller_metrics is None:
+        st.warning("Load data/trust_analytics.db to compare seller metrics.")
+    elif filtered_seller_metrics.empty:
+        st.error("No sellers match the selected filters.")
+    else:
+        seller_options = get_seller_options(filtered_seller_metrics)
+        default_selection = seller_options[:2]
+        selected_sellers = st.multiselect(
+            "Select 2-3 sellers",
+            seller_options,
+            default=default_selection,
+            max_selections=3,
+            help="Pick two or three sellers to compare metrics, trends, and risk profiles side by side.",
+        )
+        if len(selected_sellers) < 2:
+            st.info("Select at least two sellers to enable compare mode.")
+        else:
+            compare_metrics = prepare_compare_metrics(filtered_seller_metrics, selected_sellers)
+            st.caption("Side-by-side comparison of selected sellers using the current dashboard filters.")
+
+            for seller in build_risk_badge_summary(compare_metrics).itertuples(index=False):
+                with st.container(border=True):
+                    st.markdown(f"#### Seller `{seller.seller_id}`")
+                    st.markdown(
+                        f"<div style='height: 6px; border-radius: 4px; background: {seller.risk_color};'></div>",
+                        unsafe_allow_html=True,
+                    )
+                    score_col, tier_col, order_col = st.columns(3)
+                    score_col.metric("Trust Score", f"{seller.trust_score:.1f}")
+                    tier_col.metric("Risk Tier", seller.risk_tier)
+                    order_col.metric("Orders", f"{seller.total_orders:,}")
+
+            st.markdown("#### Side-by-Side Metrics")
+            st.dataframe(
+                build_side_by_side_table(compare_metrics),
+                hide_index=True,
+                use_container_width=True,
+            )
+
+            chart_col, diff_col = st.columns([3, 2])
+            with chart_col:
+                st.plotly_chart(
+                    build_risk_profile_chart(compare_metrics),
+                    use_container_width=True,
+                )
+            with diff_col:
+                st.markdown("#### Key Differences")
+                st.dataframe(
+                    build_difference_highlights(compare_metrics),
+                    hide_index=True,
+                    use_container_width=True,
+                )
+
+            with st.spinner("Loading comparison history..."):
+                try:
+                    compare_order_fact = load_seller_order_fact(selected_sellers)
+                except FileNotFoundError:
+                    compare_order_fact = None
+                    st.warning("Load data/trust_analytics.db to compare seller trend overlays.")
+
+            if compare_order_fact is not None:
+                compare_monthly_metrics = prepare_monthly_seller_metrics(compare_order_fact)
+                if compare_monthly_metrics.empty:
+                    st.warning("No monthly history is available for the selected sellers.")
+                else:
+                    st.markdown("#### Overlay Trend")
+                    st.plotly_chart(
+                        build_trust_overlay_chart(compare_monthly_metrics),
+                        use_container_width=True,
+                    )

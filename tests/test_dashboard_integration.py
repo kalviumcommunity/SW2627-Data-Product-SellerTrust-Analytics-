@@ -12,6 +12,7 @@ class DashboardIntegrationTests(unittest.TestCase):
             "Seller Scorecard",
             "Behaviour Segments",
             "Trust-Risk Actions",
+            "Compare Sellers",
         ]:
             self.assertIn(section, app_source)
 
@@ -20,6 +21,7 @@ class DashboardIntegrationTests(unittest.TestCase):
 
         for module in [
             "app.actions",
+            "app.compare",
             "app.filters",
             "app.overview",
             "app.scorecard",
