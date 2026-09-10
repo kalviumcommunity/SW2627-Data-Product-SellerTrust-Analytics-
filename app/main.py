@@ -29,6 +29,43 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown(
+    """
+    <style>
+    .block-container {
+        max-width: 1280px;
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+    }
+
+    div[data-testid="stMetric"] {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.85rem;
+        padding: 0.85rem 1rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+
+    div[data-testid="stDataFrame"],
+    div[data-testid="stPlotlyChart"] {
+        border-radius: 0.85rem;
+        overflow: hidden;
+    }
+
+    section[data-testid="stSidebar"] {
+        border-right: 1px solid #e5e7eb;
+    }
+
+    @media (max-width: 900px) {
+        .block-container {
+            padding-left: 0.85rem;
+            padding-right: 0.85rem;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.title("Seller Trust Analytics Dashboard")
 initialise_filter_state(st.session_state)
@@ -183,11 +220,12 @@ with signals_tab:
                 use_container_width=True,
             )
 
-            try:
-                order_fact = load_seller_order_fact(signal_metrics["seller_id"])
-            except FileNotFoundError:
-                order_fact = None
-                st.warning("Load data/trust_analytics.db to show seller performance trends.")
+            with st.spinner("Loading seller performance history..."):
+                try:
+                    order_fact = load_seller_order_fact(signal_metrics["seller_id"])
+                except FileNotFoundError:
+                    order_fact = None
+                    st.warning("Load data/trust_analytics.db to show seller performance trends.")
 
             if order_fact is not None:
                 monthly_metrics = prepare_monthly_seller_metrics(order_fact)
@@ -237,10 +275,11 @@ with scorecard_tab:
             hide_index=True,
             use_container_width=True,
         )
-        try:
-            scorecard_order_fact = load_seller_order_fact(scorecard_metrics["seller_id"])
-        except FileNotFoundError:
-            scorecard_order_fact = None
+        with st.spinner("Loading scorecard anomaly history..."):
+            try:
+                scorecard_order_fact = load_seller_order_fact(scorecard_metrics["seller_id"])
+            except FileNotFoundError:
+                scorecard_order_fact = None
         anomaly_details = build_anomaly_detail_rows(
             scorecard_metrics,
             scorecard_order_fact,

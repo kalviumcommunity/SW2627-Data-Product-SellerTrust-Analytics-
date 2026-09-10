@@ -33,9 +33,18 @@ class DashboardIntegrationTests(unittest.TestCase):
 
         self.assertIn("initialise_filter_state(st.session_state)", app_source)
         self.assertIn("st.spinner", app_source)
+        self.assertIn("Loading seller performance history...", app_source)
+        self.assertIn("Loading scorecard anomaly history...", app_source)
         self.assertIn('key="seller_search"', app_source)
         self.assertIn('key="selected_risk_tier"', app_source)
         self.assertIn('key="selected_category"', app_source)
+
+    def test_main_app_has_responsive_dashboard_css(self):
+        app_source = Path("app/main.py").read_text()
+
+        self.assertIn(".block-container", app_source)
+        self.assertIn("max-width: 1280px", app_source)
+        self.assertIn("@media (max-width: 900px)", app_source)
 
     def test_main_app_has_refresh_button_and_timestamp(self):
         app_source = Path("app/main.py").read_text()

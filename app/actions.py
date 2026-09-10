@@ -2,22 +2,23 @@ from __future__ import annotations
 
 import pandas as pd
 
+from app.theme import HIGH_RISK_RED, TRUSTED_GREEN, WATCHLIST_YELLOW
 from src.actions import ACTION_COACH, ACTION_ESCALATE, ACTION_MONITOR, recommend_actions
 
 SEVERITY_STYLES = {
     ACTION_ESCALATE: {
         "label": "High Severity",
-        "color": "#d62728",
+        "color": HIGH_RISK_RED,
         "badge": "🔴 Escalate",
     },
     ACTION_COACH: {
         "label": "Medium Severity",
-        "color": "#ffbf00",
+        "color": WATCHLIST_YELLOW,
         "badge": "🟡 Coach",
     },
     ACTION_MONITOR: {
         "label": "Low Severity",
-        "color": "#2ca02c",
+        "color": TRUSTED_GREEN,
         "badge": "🟢 Monitor",
     },
 }
