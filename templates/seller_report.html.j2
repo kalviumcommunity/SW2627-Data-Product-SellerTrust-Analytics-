@@ -112,8 +112,8 @@
       {% else %}
       <div class="score"><small>No trust score</small></div>
       {% endif %}
-      <span class="badge badge-{{ report.risk_tier|lower|replace(' ', '-') }}">{{ report.risk_tier }}</span>
-      <span class="badge badge-{{ report.recommended_action|lower|replace(' ', '-') }}">{{ report.recommended_action }}</span>
+       <span class="badge badge-{{ report.risk_tier|lower|replace(' ', '-') }}" aria-label="Risk tier: {{ report.risk_tier }}">{{ report.risk_tier }}</span>
+       <span class="badge badge-{{ report.recommended_action|lower|replace(' ', '-') }}" aria-label="Recommended action: {{ report.recommended_action }}">{{ report.recommended_action }}</span>
     </div>
     {% if report.eligibility_note %}
     <div class="notice">{{ report.eligibility_note }}</div>
@@ -190,7 +190,7 @@
   {% if report.history %}
   <section>
     <h2>Month by month</h2>
-    <table class="history">
+     <table class="history" aria-label="Monthly seller performance history">
       <thead>
         <tr><th>Month</th><th>Orders</th><th>Delivered with dates</th><th>Avg review</th><th>Late delivery</th></tr>
       </thead>

@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+from app.accessibility import render_accessible_chart
 from app.actions import action_queue_export, build_action_queue, format_evidence_bullets, paginate_action_queue
 from app.category import build_category_analysis, category_analysis_csv
 from app.compare import (
@@ -14,6 +15,7 @@ from app.compare import (
 )
 from app.filters import RISK_TIERS, get_category_options, query_seller_metrics
 from app.overview import build_overview_kpis, load_seller_metrics
+from app.runtime import refresh_dashboard_data
 from app.scorecard import add_alert_badges, build_anomaly_detail_rows
 from app.segments import build_segment_composition_chart, build_segment_summary
 from app.seller_detail import build_seller_detail, seller_detail_csv
@@ -36,7 +38,6 @@ from app.ui_state import (
     mark_data_refreshed,
     normalise_selected_option,
 )
-from scripts.etl_pipeline import run_etl
 
 st.set_page_config(
     page_title="Seller Trust Analytics Dashboard",
@@ -94,18 +95,13 @@ with st.sidebar:
     st.divider()
     if st.button("Refresh Data", use_container_width=True):
         with st.spinner("Refreshing dashboard data..."):
-            try:
-                run_etl(
-                    raw_dir="data/raw",
-                    output_dir="data/processed",
-                    db_path="data/trust_analytics.db",
-                )
-            except Exception as error:
-                st.error(f"Refresh failed: {error}")
+            refresh_succeeded, refresh_message = refresh_dashboard_data()
+            if not refresh_succeeded:
+                st.error(f"Refresh failed: {refresh_message}")
             else:
                 mark_data_refreshed(st.session_state)
                 st.cache_data.clear()
-                st.success("Dashboard data refreshed successfully.")
+                st.success(refresh_message)
     st.caption(get_last_refresh_label(st.session_state))
     st.caption(get_dataset_version())
     st.divider()
@@ -221,14 +217,16 @@ with signals_tab:
             )
             scatter_col, heatmap_col = st.columns(2)
             with scatter_col:
-                st.plotly_chart(
+                render_accessible_chart(
                     build_return_rate_scatter(signal_metrics),
-                    use_container_width=True,
+                    description="Each point is a seller. The horizontal axis shows the return-rate proxy and the vertical axis shows trust score.",
+                    data=signal_metrics,
                 )
             with heatmap_col:
-                st.plotly_chart(
+                render_accessible_chart(
                     build_correlation_heatmap(signal_metrics),
-                    use_container_width=True,
+                    description="The heatmap shows how strongly each measured risk signal moves with the others, from negative to positive correlation.",
+                    data=signal_metrics,
                 )
 
             st.markdown("#### High-Trust vs Low-Trust Cohorts")
@@ -247,9 +245,10 @@ with signals_tab:
 
             if order_fact is not None:
                 st.markdown("#### Buyer Drop-Off Funnel")
-                st.plotly_chart(
+                render_accessible_chart(
                     build_buyer_dropoff_funnel(order_fact),
-                    use_container_width=True,
+                    description="The funnel shows the number of orders at each buyer journey stage, from purchased through reviewed.",
+                    data=order_fact,
                 )
 
                 monthly_metrics = prepare_monthly_seller_metrics(order_fact)
@@ -257,20 +256,23 @@ with signals_tab:
                     st.warning("No monthly seller history is available for trend visuals.")
                 else:
                     st.markdown("#### Seller Performance Trends")
-                    st.plotly_chart(
+                    render_accessible_chart(
                         build_trust_score_trend(monthly_metrics),
-                        use_container_width=True,
+                        description="The line chart shows average monthly trust score over time.",
+                        data=monthly_metrics,
                     )
                     sentiment_col, decay_col = st.columns(2)
                     with sentiment_col:
-                        st.plotly_chart(
+                        render_accessible_chart(
                             build_monthly_sentiment_bar(order_fact),
-                            use_container_width=True,
+                            description="The bars show monthly review sentiment counts grouped by positive, neutral, and negative sentiment.",
+                            data=order_fact,
                         )
                     with decay_col:
-                        st.plotly_chart(
+                        render_accessible_chart(
                             build_performance_decay_chart(monthly_metrics),
-                            use_container_width=True,
+                            description="The chart shows how seller performance changes across monthly order cohorts.",
+                            data=monthly_metrics,
                         )
 
 with scorecard_tab:
@@ -333,9 +335,10 @@ with segments_tab:
             "Portfolio view of sellers grouped into Reliable, Inconsistent, "
             "Return-Prone, and High-Risk behaviour tiers."
         )
-        st.plotly_chart(
+        render_accessible_chart(
             build_segment_composition_chart(filtered_seller_metrics),
-            use_container_width=True,
+            description="The chart shows the number of sellers in each behaviour segment.",
+            data=build_segment_summary(filtered_seller_metrics),
         )
         st.dataframe(
             build_segment_summary(filtered_seller_metrics),
@@ -373,6 +376,13 @@ with category_tab:
             st.markdown("#### Category Comparisons")
             chart_data = category_analysis.dropna(subset=["avg_trust_score"])
             st.bar_chart(chart_data.set_index("category")["avg_trust_score"])
+            st.caption("Chart description: Each bar represents a product category and its average trust score.")
+            with st.expander("View category trust scores as a table"):
+                st.dataframe(
+                    chart_data[["category", "avg_trust_score"]],
+                    hide_index=True,
+                    use_container_width=True,
+                )
             st.markdown("#### Top Trust-Eroding Behaviours")
             st.dataframe(
                 category_analysis[["category", "top_trust_eroding_behaviours", "sample_warning"]],
@@ -426,7 +436,7 @@ with actions_tab:
                         st.metric("Trust Score", "n/a" if pd.isna(score) else f"{score:.1f}")
 
                     st.markdown(
-                        f"<div style='height: 6px; border-radius: 4px; background: {seller['severity_color']};'></div>",
+                        f"<div role='img' aria-label='Action severity: {seller['severity_label']}' style='height: 6px; border-radius: 4px; background: {seller['severity_color']};'></div>",
                         unsafe_allow_html=True,
                     )
                     st.write("Supporting evidence")
@@ -519,7 +529,7 @@ with compare_tab:
                 with st.container(border=True):
                     st.markdown(f"#### Seller `{seller.seller_id}`")
                     st.markdown(
-                        f"<div style='height: 6px; border-radius: 4px; background: {seller.risk_color};'></div>",
+                        f"<div role='img' aria-label='Risk tier: {seller.risk_tier}' style='height: 6px; border-radius: 4px; background: {seller.risk_color};'></div>",
                         unsafe_allow_html=True,
                     )
                     score_col, tier_col, order_col = st.columns(3)
@@ -536,9 +546,10 @@ with compare_tab:
 
             chart_col, diff_col = st.columns([3, 2])
             with chart_col:
-                st.plotly_chart(
+                render_accessible_chart(
                     build_risk_profile_chart(compare_metrics),
-                    use_container_width=True,
+                    description="The radar chart compares selected sellers across trust, delivery, review, cancellation, and sentiment metrics.",
+                    data=compare_metrics,
                 )
             with diff_col:
                 st.markdown("#### Key Differences")
@@ -561,7 +572,8 @@ with compare_tab:
                     st.warning("No monthly history is available for the selected sellers.")
                 else:
                     st.markdown("#### Overlay Trend")
-                    st.plotly_chart(
+                    render_accessible_chart(
                         build_trust_overlay_chart(compare_monthly_metrics),
-                        use_container_width=True,
+                        description="Each line shows one selected seller's monthly trust score trend.",
+                        data=compare_monthly_metrics,
                     )

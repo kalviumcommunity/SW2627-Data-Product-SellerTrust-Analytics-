@@ -11,6 +11,7 @@ class DashboardIntegrationTests(unittest.TestCase):
             "Trust vs. Behaviour Signals",
             "Seller Scorecard",
             "Behaviour Segments",
+            "Category Analysis",
             "Trust-Risk Actions",
             "Compare Sellers",
         ]:
@@ -52,7 +53,7 @@ class DashboardIntegrationTests(unittest.TestCase):
         app_source = Path("app/main.py").read_text()
 
         self.assertIn('st.button("Refresh Data"', app_source)
-        self.assertIn("run_etl(", app_source)
+        self.assertIn("refresh_dashboard_data()", app_source)
         self.assertIn("mark_data_refreshed(st.session_state)", app_source)
         self.assertIn("get_last_refresh_label(st.session_state)", app_source)
         self.assertIn("Refreshing dashboard data...", app_source)
@@ -63,6 +64,22 @@ class DashboardIntegrationTests(unittest.TestCase):
         self.assertIn("No sellers match the selected filters.", app_source)
         self.assertIn("Dashboard data is not available yet.", app_source)
         self.assertIn("Generate data/processed/seller_metrics.csv", app_source)
+
+    def test_main_app_provides_accessible_chart_alternatives(self):
+        app_source = Path("app/main.py").read_text()
+
+        self.assertIn("render_accessible_chart", app_source)
+        self.assertIn("Chart description:", Path("app/accessibility.py").read_text())
+        self.assertIn("aria-label='Action severity:", app_source)
+        self.assertIn(
+            'aria-label="Monthly seller performance history"', Path("templates/seller_report.html.j2").read_text()
+        )
+
+    def test_main_app_delegates_refresh_failures_to_runtime_helper(self):
+        app_source = Path("app/main.py").read_text()
+
+        self.assertIn("refresh_dashboard_data()", app_source)
+        self.assertIn("Refresh failed:", app_source)
 
 
 if __name__ == "__main__":
