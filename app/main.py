@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from app.actions import action_queue_export, build_action_queue, format_evidence_bullets, paginate_action_queue
+from app.category import build_category_analysis, category_analysis_csv
 from app.compare import (
     build_difference_highlights,
     build_risk_badge_summary,
@@ -161,12 +162,13 @@ with st.spinner("Loading seller metrics..."):
         filtered_seller_metrics = None
         st.error(f"Unable to query seller metrics from SQLite: {error}")
 
-overview_tab, signals_tab, scorecard_tab, segments_tab, actions_tab, detail_tab, compare_tab = st.tabs(
+overview_tab, signals_tab, scorecard_tab, segments_tab, category_tab, actions_tab, detail_tab, compare_tab = st.tabs(
     [
         "Trust Overview",
         "Trust vs. Behaviour Signals",
         "Seller Scorecard",
         "Behaviour Segments",
+        "Category Analysis",
         "Trust-Risk Actions",
         "Seller Detail",
         "Compare Sellers",
@@ -340,6 +342,43 @@ with segments_tab:
             hide_index=True,
             use_container_width=True,
         )
+
+with category_tab:
+    st.subheader("Category Trust Risk Analysis")
+    if filtered_seller_metrics is None:
+        st.warning("Load data/trust_analytics.db to analyze category health.")
+    elif filtered_seller_metrics.empty:
+        st.info("No sellers match the current filters.")
+    else:
+        with st.spinner("Loading category analysis..."):
+            category_fact = load_seller_order_fact()
+            category_analysis = build_category_analysis(filtered_seller_metrics, category_fact)
+        if category_analysis.empty:
+            st.info("No category data is available for the current filters.")
+        else:
+            st.caption(
+                "Trust score is the average of unique seller contributions per category. "
+                "Rates use measurable observations only."
+            )
+            st.download_button(
+                "Download category analysis",
+                category_analysis_csv(category_analysis),
+                "category_trust_risk_analysis.csv",
+                "text/csv",
+            )
+            warning_count = int(category_analysis["sample_warning"].sum())
+            if warning_count:
+                st.warning(f"{warning_count} categories have fewer than 10 orders; interpret their rates cautiously.")
+            st.dataframe(category_analysis, hide_index=True, use_container_width=True)
+            st.markdown("#### Category Comparisons")
+            chart_data = category_analysis.dropna(subset=["avg_trust_score"])
+            st.bar_chart(chart_data.set_index("category")["avg_trust_score"])
+            st.markdown("#### Top Trust-Eroding Behaviours")
+            st.dataframe(
+                category_analysis[["category", "top_trust_eroding_behaviours", "sample_warning"]],
+                hide_index=True,
+                use_container_width=True,
+            )
 
 with actions_tab:
     st.subheader("Trust-Risk Actions")
