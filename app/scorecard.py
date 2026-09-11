@@ -57,7 +57,7 @@ def _seller_monthly_peaks(order_fact: pd.DataFrame, seller_id: str) -> dict[str,
         .astype("string")
     )
     fact["review_score"] = pd.to_numeric(fact["review_score"], errors="coerce")
-    fact["is_late_delivery"] = pd.to_numeric(fact["is_late_delivery"], errors="coerce").fillna(0)
+    fact["is_late_delivery"] = pd.to_numeric(fact["is_late_delivery"], errors="coerce")
     fact["response_time_hours"] = pd.to_numeric(fact["response_time_hours"], errors="coerce")
 
     monthly = fact.groupby("purchase_month", as_index=False).agg(

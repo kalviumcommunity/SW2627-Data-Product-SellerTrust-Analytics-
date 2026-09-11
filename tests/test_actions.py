@@ -113,6 +113,11 @@ class ActionRecommendationTests(unittest.TestCase):
         evidence = _build_evidence(row)
         self.assertTrue(any("No significant" in e for e in evidence))
 
+    def test_evidence_warns_when_delivery_data_is_missing(self):
+        row = pd.Series({"delivered_orders_with_dates": 0})
+        evidence = _build_evidence(row)
+        self.assertTrue(any("delivery rate is unknown" in e for e in evidence))
+
     def test_recommend_actions_returns_all_columns(self):
         sellers = pd.concat(
             [

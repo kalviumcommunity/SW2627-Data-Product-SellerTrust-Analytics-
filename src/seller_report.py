@@ -30,6 +30,7 @@ TREND_LABELS = {
 METRIC_LABELS = [
     ("trust_score", "Trust score", "score"),
     ("total_orders", "Total orders", "int"),
+    ("delivered_orders_with_dates", "Delivered orders with valid dates", "int"),
     ("cancelled_orders", "Cancelled orders", "int"),
     ("late_delivery_rate", "Late delivery rate", "pct"),
     ("average_delivery_delay_days", "Average delivery delay", "days"),
@@ -73,6 +74,7 @@ def _monthly_history(fact: pd.DataFrame, seller_id: str) -> list[dict[str, Any]]
     rows = rows.dropna(subset=["month"])
     monthly = rows.groupby("month").agg(
         orders=("order_id", "nunique"),
+        delivered_orders_with_dates=("is_late_delivery", "count"),
         average_review_score=("review_score", "mean"),
         late_delivery_rate=("is_late_delivery", "mean"),
     )
@@ -80,6 +82,7 @@ def _monthly_history(fact: pd.DataFrame, seller_id: str) -> list[dict[str, Any]]
         {
             "month": str(month),
             "orders": int(row["orders"]),
+            "delivered_orders_with_dates": int(row["delivered_orders_with_dates"]),
             "average_review_score": (
                 None if pd.isna(row["average_review_score"]) else float(row["average_review_score"])
             ),
@@ -182,17 +185,24 @@ def collect_seller_report(
             evidence = list(raw_evidence) if isinstance(raw_evidence, (list, tuple)) else []
 
     eligible = bool(row.get("eligible_for_risk_score", False))
+    notes: list[str] = []
+    if not eligible:
+        notes.append(
+            f"This seller has {int(row['total_orders'])} orders, below the 5-order floor for trust "
+            "scoring. The metrics below are real but rest on a very small sample; read the risk "
+            "tier as a triage hint rather than a measurement."
+        )
+    delivered_count = row.get("delivered_orders_with_dates", pd.NA)
+    if pd.notna(delivered_count) and delivered_count == 0:
+        notes.append(
+            "No delivered orders with valid delivery dates were observed; the late-delivery rate "
+            "is unknown and does not contribute to the trust score."
+        )
 
     return {
         "seller_id": seller_id,
         "eligible": eligible,
-        "eligibility_note": (
-            None
-            if eligible
-            else f"This seller has {int(row['total_orders'])} orders, below the 5-order floor for trust "
-            "scoring. The metrics below are real but rest on a very small sample; read the risk "
-            "tier as a triage hint rather than a measurement."
-        ),
+        "eligibility_note": " ".join(notes) or None,
         "risk_tier": row.get("risk_tier", "n/a"),
         "trust_score": None if pd.isna(row.get("trust_score")) else float(row["trust_score"]),
         "metrics": [

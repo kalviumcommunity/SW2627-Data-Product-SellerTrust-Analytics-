@@ -112,8 +112,27 @@ class PipelineTests(unittest.TestCase):
         metrics = build_seller_metrics(fact).iloc[0]
         self.assertEqual(metrics["delivered_orders_with_dates"], 0)
         self.assertTrue(pd.isna(metrics["average_delivery_delay_days"]))
-        # The rate stays 0.0 so the trust score remains computable; the count is the caveat.
-        self.assertEqual(metrics["late_delivery_rate"], 0.0)
+        self.assertTrue(pd.isna(metrics["late_delivery_rate"]))
+
+    def test_sellers_without_delivery_evidence_keep_late_rate_unknown(self):
+        for status in ("canceled", "pending", "shipped"):
+            fact = pd.DataFrame(
+                {
+                    "seller_id": ["s1"] * 5,
+                    "order_id": [f"{status}-{i}" for i in range(5)],
+                    "order_status": [status] * 5,
+                    "is_late_delivery": [pd.NA] * 5,
+                    "delivery_delay_days": [pd.NA] * 5,
+                    "review_score": [4] * 5,
+                    "response_time_hours": [1] * 5,
+                    "order_delivered_customer_date": pd.to_datetime([None] * 5),
+                    "order_estimated_delivery_date": pd.to_datetime(["2018-01-04"] * 5),
+                }
+            )
+            metrics = build_seller_metrics(fact).iloc[0]
+            self.assertEqual(metrics["delivered_orders_with_dates"], 0)
+            self.assertTrue(pd.isna(metrics["late_delivery_rate"]), status)
+            self.assertFalse(metrics["eligible_for_risk_score"])
 
     def test_delivered_orders_with_dates_counts_the_late_rate_denominator(self):
         fact = pd.DataFrame(

@@ -106,6 +106,7 @@ def create_tables(db_path: Path | str = DEFAULT_DB_PATH) -> None:
         CREATE TABLE IF NOT EXISTS seller_metrics (
             seller_id TEXT NOT NULL,
             total_orders INTEGER,
+            delivered_orders_with_dates INTEGER,
             cancelled_orders INTEGER,
             late_delivery_rate REAL,
             average_delivery_delay_days REAL,
@@ -146,12 +147,18 @@ def load_to_sql(
             raise FileNotFoundError(f"Missing CSV: {csv_path}")
 
         df = load_cached_csv(csv_path)
-        if table_name == "seller_metrics" and ("trust_score" not in df.columns or "risk_tier" not in df.columns):
-            from src.trust_score import calculate_trust_score
+        if table_name == "seller_metrics":
+            if "delivered_orders_with_dates" not in df.columns:
+                fact = load_cached_csv(data_path / "seller_order_fact.csv")
+                delivered_counts = fact.groupby("seller_id")["is_late_delivery"].count()
+                df["delivered_orders_with_dates"] = df["seller_id"].map(delivered_counts).fillna(0).astype(int)
 
-            scored = df.copy()
-            scored["eligible_for_risk_score"] = scored["eligible_for_risk_score"].astype(bool)
-            df = add_canonical_risk_tier(calculate_trust_score(scored))
+            if "trust_score" not in df.columns or "risk_tier" not in df.columns:
+                from src.trust_score import calculate_trust_score
+
+                scored = df.copy()
+                scored["eligible_for_risk_score"] = scored["eligible_for_risk_score"].astype(bool)
+                df = add_canonical_risk_tier(calculate_trust_score(scored))
         df.to_sql(table_name, conn, if_exists="replace", index=False)
         row_counts[table_name] = len(df)
 
