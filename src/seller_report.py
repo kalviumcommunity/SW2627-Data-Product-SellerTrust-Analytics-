@@ -176,6 +176,8 @@ def collect_seller_report(
 
     recommended_action = "Not assessed"
     evidence: list[str] = []
+    recommended_next_step = None
+    primary_driver = None
     if actions is not None:
         action_rows = actions[actions["seller_id"] == seller_id]
         if not action_rows.empty:
@@ -183,6 +185,8 @@ def collect_seller_report(
             recommended_action = str(action_row.get("recommended_action", recommended_action))
             raw_evidence = action_row.get("evidence", [])
             evidence = list(raw_evidence) if isinstance(raw_evidence, (list, tuple)) else []
+            recommended_next_step = action_row.get("recommended_next_step")
+            primary_driver = action_row.get("primary_driver")
 
     eligible = bool(row.get("eligible_for_risk_score", False))
     notes: list[str] = []
@@ -213,6 +217,8 @@ def collect_seller_report(
         "anomaly_count": anomaly_count,
         "anomaly_metrics": anomaly_metrics,
         "recommended_action": recommended_action,
+        "recommended_next_step": recommended_next_step,
+        "primary_driver": primary_driver,
         "evidence": evidence,
         "history": _monthly_history(fact, seller_id),
     }

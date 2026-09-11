@@ -15,6 +15,7 @@ from app.filters import RISK_TIERS, get_category_options, query_seller_metrics
 from app.overview import build_overview_kpis, load_seller_metrics
 from app.scorecard import add_alert_badges, build_anomaly_detail_rows
 from app.segments import build_segment_composition_chart, build_segment_summary
+from app.seller_detail import build_seller_detail, seller_detail_csv
 from app.signals import (
     build_buyer_dropoff_funnel,
     build_cohort_comparison,
@@ -160,13 +161,14 @@ with st.spinner("Loading seller metrics..."):
         filtered_seller_metrics = None
         st.error(f"Unable to query seller metrics from SQLite: {error}")
 
-overview_tab, signals_tab, scorecard_tab, segments_tab, actions_tab, compare_tab = st.tabs(
+overview_tab, signals_tab, scorecard_tab, segments_tab, actions_tab, detail_tab, compare_tab = st.tabs(
     [
         "Trust Overview",
         "Trust vs. Behaviour Signals",
         "Seller Scorecard",
         "Behaviour Segments",
         "Trust-Risk Actions",
+        "Seller Detail",
         "Compare Sellers",
     ]
 )
@@ -398,6 +400,59 @@ with actions_tab:
                     )
                     st.write(seller["explanation"])
                     st.info(f"Next step: {seller['recommended_next_step']}")
+
+with detail_tab:
+    st.subheader("Seller Detail")
+    if filtered_seller_metrics is None:
+        st.warning("Load data/trust_analytics.db to open seller details.")
+    elif filtered_seller_metrics.empty:
+        st.info("No sellers match the current filters. Select different filters to open a detail view.")
+    else:
+        seller_options = sorted(filtered_seller_metrics["seller_id"].astype(str).unique().tolist())
+        selected_seller = st.selectbox(
+            "Select a seller",
+            ["Select a seller", *seller_options],
+            key="detail_seller_id",
+        )
+        if selected_seller == "Select a seller":
+            st.info("Select a seller to view the complete trust profile.")
+        else:
+            with st.spinner("Loading seller detail..."):
+                detail_fact = load_seller_order_fact([selected_seller])
+                detail = build_seller_detail(filtered_seller_metrics, detail_fact, selected_seller)
+            report = detail["report"]
+            score_col, tier_col, action_col = st.columns(3)
+            score_col.metric(
+                "Trust Score", "n/a" if report["trust_score"] is None else f"{report['trust_score']:.1f} / 100"
+            )
+            tier_col.metric("Risk Tier", report["risk_tier"])
+            action_col.metric("Recommended Action", report["recommended_action"])
+            if report["eligibility_note"]:
+                st.warning(report["eligibility_note"])
+            st.download_button(
+                "Download seller CSV",
+                seller_detail_csv(detail),
+                f"seller_{selected_seller}_detail.csv",
+                "text/csv",
+            )
+            st.download_button(
+                "Download seller HTML report",
+                detail["html"].encode("utf-8"),
+                f"seller_{selected_seller}_report.html",
+                "text/html",
+            )
+            st.markdown("#### Component Contributions")
+            st.dataframe(detail["signals"], hide_index=True, use_container_width=True)
+            st.markdown("#### Seller Metrics and Evidence")
+            st.dataframe(pd.DataFrame(report["metrics"]), hide_index=True, use_container_width=True)
+            if detail["chart_html"]:
+                st.markdown("#### Performance Trend")
+                st.components.v1.html(detail["chart_html"], height=410, scrolling=False)
+            st.markdown("#### Action Evidence")
+            for evidence in report["evidence"]:
+                st.markdown(f"- {evidence}")
+            if report["recommended_next_step"]:
+                st.info(f"Next step: {report['recommended_next_step']}")
 
 with compare_tab:
     st.subheader("Compare Sellers")
