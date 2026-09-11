@@ -65,6 +65,9 @@ log = get_pipeline_logger("dashboard.signals")
 
 def prepare_signal_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
     """Return scored, eligible seller metrics for behaviour-signal visuals."""
+    required_columns = {"seller_id", "eligible_for_risk_score"}
+    if not required_columns.issubset(metrics.columns):
+        return pd.DataFrame(columns=[*metrics.columns, *RISK_SIGNAL_COLUMNS])
     prepared = prepare_seller_metrics(metrics)
     eligible_flag = prepared["eligible_for_risk_score"]
     if not pd.api.types.is_bool_dtype(eligible_flag):
