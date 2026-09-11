@@ -182,6 +182,9 @@
     {% else %}
     <p class="empty" style="margin:0">No supporting evidence recorded for this seller.</p>
     {% endif %}
+    {% if report.recommended_next_step %}
+    <p style="margin:12px 0 0"><strong>Next step:</strong> {{ report.recommended_next_step }}</p>
+    {% endif %}
   </section>
 
   {% if report.history %}
