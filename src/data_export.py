@@ -8,8 +8,7 @@ import pandas as pd
 
 from src.actions import recommend_actions
 from src.logging_config import get_pipeline_logger
-from src.pipeline_cache import load_cached_csv
-from src.sql_loader import DEFAULT_DB_PATH, load_to_sql
+from src.sql_loader import DEFAULT_DB_PATH
 
 DEFAULT_OUTPUT_DIR = Path("data/processed")
 log = get_pipeline_logger("data_export")
@@ -67,21 +66,12 @@ def full_refresh(
 
     Returns a dict of row counts for each generated output.
     """
-    from src.pipeline import run_pipeline
+    from scripts.etl_pipeline import run_etl
 
-    outputs = run_pipeline(raw_dir, output_dir)
-    counts: dict[str, int] = {name: len(frame) for name, frame in outputs.items()}
-
-    sql_counts = load_to_sql(output_dir, db_path)
-    counts.update(sql_counts)
-
-    metrics_path = Path(output_dir) / "seller_metrics.csv"
-    if metrics_path.is_file():
-        metrics = load_cached_csv(metrics_path)
-        report = recommend_actions(metrics)
-        report_path = Path(output_dir) / "seller_report.csv"
-        report.to_csv(report_path, index=False)
-        counts["seller_report"] = len(report)
-
-    log.info("Full refresh completed: %s", ", ".join(f"{name}={count} rows" for name, count in counts.items()))
-    return counts
+    return run_etl(
+        raw_dir=str(raw_dir),
+        output_dir=str(output_dir),
+        db_path=str(db_path),
+        skip_anomaly=True,
+        skip_export=True,
+    )
