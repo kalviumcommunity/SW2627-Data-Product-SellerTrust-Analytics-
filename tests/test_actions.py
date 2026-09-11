@@ -138,6 +138,20 @@ class ActionRecommendationTests(unittest.TestCase):
         self.assertIn("recommended_action", result.columns)
         self.assertIn("evidence", result.columns)
         self.assertIn("anomaly_count", result.columns)
+        self.assertIn("primary_driver", result.columns)
+        self.assertIn("recommended_next_step", result.columns)
+
+    def test_action_detail_includes_driver_value_and_denominator(self):
+        result = recommend_actions(
+            _make_seller(
+                average_review_score=3.5,
+                delivered_orders_with_dates=8,
+                review_count=8,
+            )
+        )
+        self.assertEqual(result.loc[0, "primary_driver"], "Average review score")
+        self.assertEqual(result.loc[0, "denominator"], 8)
+        self.assertIn("threshold", result.loc[0, "explanation"])
 
     def test_recommend_actions_bad_seller_gets_escalate(self):
         bad = _make_seller(

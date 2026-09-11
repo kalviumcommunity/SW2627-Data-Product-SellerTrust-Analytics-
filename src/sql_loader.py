@@ -152,6 +152,10 @@ def load_to_sql(
                 fact = load_cached_csv(data_path / "seller_order_fact.csv")
                 delivered_counts = fact.groupby("seller_id")["is_late_delivery"].count()
                 df["delivered_orders_with_dates"] = df["seller_id"].map(delivered_counts).fillna(0).astype(int)
+            if "review_count" not in df.columns:
+                fact = load_cached_csv(data_path / "seller_order_fact.csv")
+                review_counts = fact.groupby("seller_id")["review_score"].count()
+                df["review_count"] = df["seller_id"].map(review_counts).fillna(0).astype(int)
 
             if "trust_score" not in df.columns or "risk_tier" not in df.columns:
                 from src.trust_score import calculate_trust_score
