@@ -27,6 +27,7 @@ from app.signals import (
     prepare_signal_metrics,
 )
 from app.ui_state import (
+    get_dataset_version,
     get_last_refresh_label,
     initialise_filter_state,
     mark_data_refreshed,
@@ -103,6 +104,7 @@ with st.sidebar:
                 st.cache_data.clear()
                 st.success("Dashboard data refreshed successfully.")
     st.caption(get_last_refresh_label(st.session_state))
+    st.caption(get_dataset_version())
     st.divider()
     seller_search = st.text_input(
         "Seller search",

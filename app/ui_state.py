@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from collections.abc import MutableMapping
 from datetime import datetime
+from pathlib import Path
 
 FILTER_DEFAULTS = {
     "seller_search": "",
@@ -50,3 +52,16 @@ def get_last_refresh_label(session_state: MutableMapping) -> str:
     if isinstance(timestamp, str):
         return f"Last refreshed: {timestamp}"
     return f"Last refreshed: {timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+
+
+def get_dataset_version(path: str | Path = "data/processed/run_metadata.json") -> str:
+    """Return the published ETL run id, or a clear label when unavailable."""
+    metadata_path = Path(path)
+    if not metadata_path.is_file():
+        return "Dataset version: unavailable"
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "Dataset version: unavailable"
+    run_id = metadata.get("run_id")
+    return f"Dataset version: {run_id}" if run_id else "Dataset version: unavailable"

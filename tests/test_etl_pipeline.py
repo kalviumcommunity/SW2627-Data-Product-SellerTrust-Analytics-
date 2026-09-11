@@ -1,9 +1,12 @@
+import json
 import shutil
 import sys
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
+import scripts.etl_pipeline as etl_module
 from scripts.etl_pipeline import main, run_etl
 
 from .sample_olist_data import write_sample_raw_files
@@ -35,6 +38,36 @@ class EtlPipelineTests(unittest.TestCase):
         self.assertGreater(counts["seller_order_fact"], 0)
         self.assertGreater(counts["seller_metrics"], 0)
         self.assertGreater(counts["seller_report"], 0)
+        metadata = self.output_dir / "run_metadata.json"
+        self.assertTrue(metadata.is_file())
+        self.assertTrue(json.loads(metadata.read_text())["run_id"])
+
+    def test_failed_refresh_preserves_previous_outputs(self):
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        marker = self.output_dir / "previous-valid-output.txt"
+        marker.write_text("keep me")
+        with patch.object(etl_module, "_run_etl_once", side_effect=ValueError("broken stage")):
+            with self.assertRaisesRegex(ValueError, "broken stage"):
+                run_etl(
+                    raw_dir=str(self.raw_dir),
+                    output_dir=str(self.output_dir),
+                    db_path=str(self.db_path),
+                )
+        self.assertEqual(marker.read_text(), "keep me")
+        self.assertFalse((self.output_dir.parent / ".sellertrust-refresh.lock").exists())
+
+    def test_concurrent_refresh_is_rejected(self):
+        lock_path = self.output_dir.parent / ".sellertrust-refresh.lock"
+        lock_path.mkdir(parents=True, exist_ok=True)
+        try:
+            with self.assertRaisesRegex(RuntimeError, "already in progress"):
+                run_etl(
+                    raw_dir=str(self.raw_dir),
+                    output_dir=str(self.output_dir),
+                    db_path=str(self.db_path),
+                )
+        finally:
+            lock_path.rmdir()
 
     def test_run_etl_skip_sql_skips_db(self):
         counts = run_etl(

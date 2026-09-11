@@ -1,9 +1,13 @@
+import json
 import unittest
 from datetime import UTC, datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from app.ui_state import (
     FILTER_DEFAULTS,
     LAST_REFRESHED_KEY,
+    get_dataset_version,
     get_last_refresh_label,
     initialise_filter_state,
     mark_data_refreshed,
@@ -74,6 +78,12 @@ class UiStateTests(unittest.TestCase):
         label = get_last_refresh_label({LAST_REFRESHED_KEY: timestamp})
 
         self.assertIn("Last refreshed: 2026-09-08 09:30:15", label)
+
+    def test_get_dataset_version_reads_published_run_metadata(self):
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "run_metadata.json"
+            path.write_text(json.dumps({"run_id": "run-123"}))
+            self.assertEqual(get_dataset_version(path), "Dataset version: run-123")
 
 
 if __name__ == "__main__":
