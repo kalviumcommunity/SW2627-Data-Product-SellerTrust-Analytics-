@@ -11,6 +11,7 @@ WITH trust_scored AS (
     SELECT
         sm.seller_id,
         sm.total_orders,
+        sm.delivered_orders_with_dates,
         sm.cancelled_orders,
         sm.late_delivery_rate,
         sm.average_delivery_delay_days,
@@ -44,6 +45,7 @@ ranked AS (
 SELECT
     seller_id,
     total_orders,
+    delivered_orders_with_dates,
     cancelled_orders,
     ROUND(late_delivery_rate, 4) AS late_delivery_rate,
     ROUND(average_delivery_delay_days, 2) AS average_delivery_delay_days,
@@ -73,11 +75,11 @@ WITH category_agg AS (
         SUM(item_value) AS total_gmv,
         SUM(freight_value) AS total_freight,
         -- Delivery performance
-        AVG(CASE WHEN is_late_delivery = 1 THEN 1.0 ELSE 0.0 END) AS late_delivery_rate,
+        AVG(CASE WHEN is_late_delivery IS NULL THEN NULL WHEN is_late_delivery = 1 THEN 1.0 ELSE 0.0 END) AS late_delivery_rate,
         AVG(delivery_delay_days) AS avg_delivery_delay_days,
         -- Review quality
         AVG(review_score) AS avg_review_score,
-        AVG(CASE WHEN review_score <= 2 THEN 1.0 ELSE 0.0 END) AS negative_review_rate,
+        AVG(CASE WHEN review_score IS NULL THEN NULL WHEN review_score <= 2 THEN 1.0 ELSE 0.0 END) AS negative_review_rate,
         AVG(response_time_hours) AS avg_response_time_hours,
         -- Cancellation
         AVG(CASE WHEN order_status = 'canceled' THEN 1.0 ELSE 0.0 END) AS cancellation_rate,
@@ -154,11 +156,11 @@ WITH monthly_fact AS (
         SUM(item_value) AS total_gmv,
         SUM(freight_value) AS total_freight,
         -- Delivery metrics
-        AVG(CASE WHEN is_late_delivery = 1 THEN 1.0 ELSE 0.0 END) AS late_delivery_rate,
+         AVG(CASE WHEN is_late_delivery IS NULL THEN NULL WHEN is_late_delivery = 1 THEN 1.0 ELSE 0.0 END) AS late_delivery_rate,
         AVG(delivery_delay_days) AS avg_delivery_delay_days,
         -- Review metrics
         AVG(review_score) AS avg_review_score,
-        AVG(CASE WHEN review_score <= 2 THEN 1.0 ELSE 0.0 END) AS negative_review_rate,
+         AVG(CASE WHEN review_score IS NULL THEN NULL WHEN review_score <= 2 THEN 1.0 ELSE 0.0 END) AS negative_review_rate,
         AVG(response_time_hours) AS avg_response_time_hours,
         -- Cancellation
         AVG(CASE WHEN order_status = 'canceled' THEN 1.0 ELSE 0.0 END) AS cancellation_rate,

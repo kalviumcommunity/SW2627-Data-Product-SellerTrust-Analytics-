@@ -103,6 +103,13 @@ class RollingMetricsTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         self.assertEqual(result["rolling_avg_review_score"].iloc[0], 5.0)
 
+    def test_missing_delivery_evidence_is_excluded_from_rate_denominator(self):
+        fact = _make_order_fact()
+        fact.loc[fact["order_id"] == "o2", "is_late_delivery"] = pd.NA
+        result = compute_rolling_metrics(fact)
+        s1_jan = result[(result["seller_id"] == "s1") & (result["purchase_month"] == "2024-01-01")]
+        self.assertEqual(s1_jan["rolling_late_delivery_rate"].iloc[0], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

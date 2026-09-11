@@ -148,14 +148,12 @@ def build_seller_metrics(seller_orders: pd.DataFrame) -> pd.DataFrame:
     metrics = metrics.merge(delivered_counts.reset_index(), on="seller_id", how="left")
     metrics["delivered_orders_with_dates"] = metrics["delivered_orders_with_dates"].fillna(0).astype(int)
 
-    # A seller with no completed delivery has no delivery evidence either way. Keep the rate
-    # at 0.0 so the trust score stays defined, but leave the descriptive average delay NaN
-    # instead of reporting a confident "0 days early"; delivered_orders_with_dates == 0 is
-    # the flag that says the rate is uninformed.
-    metrics["late_delivery_rate"] = metrics["late_delivery_rate"].fillna(0.0)
+    # A seller with no completed delivery has no delivery evidence either way. Keep the
+    # rate unknown so it cannot improve the trust score; delivered_orders_with_dates == 0
+    # is the explicit insufficient-evidence signal for consumers.
 
     metrics["cancellation_rate_proxy"] = metrics["cancelled_orders"] / metrics["total_orders"]
-    metrics["eligible_for_risk_score"] = metrics["total_orders"] >= 5
+    metrics["eligible_for_risk_score"] = (metrics["total_orders"] >= 5) & (metrics["delivered_orders_with_dates"] > 0)
     return metrics
 
 

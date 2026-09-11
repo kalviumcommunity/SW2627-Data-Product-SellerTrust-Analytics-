@@ -85,12 +85,20 @@ def validate(raw_dir: str, output_dir: str) -> int:
     print("\n== Stage 3: eligibility and trust scores ==")
     eligible = metrics[metrics["eligible_for_risk_score"]]
     ineligible = metrics[~metrics["eligible_for_risk_score"]]
-    print(f"  eligible (>= {MIN_ORDERS_FOR_SCORE} orders)  : {len(eligible):,} ({len(eligible) / len(metrics):.1%})")
+    print(
+        f"  eligible (>= {MIN_ORDERS_FOR_SCORE} orders with delivery evidence) : "
+        f"{len(eligible):,} ({len(eligible) / len(metrics):.1%})"
+    )
     print(f"  ineligible                : {len(ineligible):,} ({len(ineligible) / len(metrics):.1%})")
 
     report.check(
-        "eligibility flag matches the order threshold",
-        bool((metrics["eligible_for_risk_score"] == (metrics["total_orders"] >= MIN_ORDERS_FOR_SCORE)).all()),
+        "eligibility flag matches order and delivery evidence thresholds",
+        bool(
+            (
+                metrics["eligible_for_risk_score"]
+                == ((metrics["total_orders"] >= MIN_ORDERS_FOR_SCORE) & (metrics["delivered_orders_with_dates"] > 0))
+            ).all()
+        ),
     )
     report.check(
         "no eligible seller is missing a trust score",

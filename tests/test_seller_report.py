@@ -20,6 +20,7 @@ def sample_metrics() -> pd.DataFrame:
             {
                 "seller_id": "s1",
                 "total_orders": 20,
+                "delivered_orders_with_dates": 9,
                 "cancelled_orders": 0,
                 "average_review_score": 1.26,
                 "negative_review_rate": 0.947,
@@ -34,6 +35,7 @@ def sample_metrics() -> pd.DataFrame:
             {
                 "seller_id": "s2",
                 "total_orders": 2,
+                "delivered_orders_with_dates": 0,
                 "cancelled_orders": 2,
                 "average_review_score": np.nan,
                 "negative_review_rate": np.nan,
@@ -97,6 +99,7 @@ class CollectReportTests(unittest.TestCase):
         self.assertFalse(report["eligible"])
         self.assertIsNone(report["trust_score"])
         self.assertIn("5-order floor", report["eligibility_note"])
+        self.assertIn("late-delivery rate is unknown", report["eligibility_note"])
 
     def test_trend_defaults_to_insufficient_data_without_a_trends_file(self):
         report = collect_seller_report("s1", metrics=sample_metrics(), fact=sample_fact())

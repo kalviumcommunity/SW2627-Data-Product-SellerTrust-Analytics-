@@ -34,6 +34,10 @@ def _build_evidence(row: pd.Series) -> list[str]:
     evidence = []
     thresholds = _get_thresholds()
 
+    delivered_count = row.get("delivered_orders_with_dates")
+    if pd.notna(delivered_count) and delivered_count == 0:
+        evidence.append("No delivered orders with valid delivery dates; delivery rate is unknown")
+
     if row.get("late_delivery_rate", 0) > 0.15:
         evidence.append(f"Late delivery rate is {row['late_delivery_rate']:.0%} (high)")
     elif row.get("late_delivery_rate", 0) > 0.05:
@@ -121,6 +125,8 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
         - anomaly_count
     """
     prepared = seller_metrics.copy()
+    if "delivered_orders_with_dates" not in prepared.columns:
+        prepared["delivered_orders_with_dates"] = pd.NA
     prepared["eligible_for_risk_score"] = prepared["eligible_for_risk_score"].astype(bool)
     scored = calculate_trust_score(prepared)
     anomalies = compute_seller_anomalies(prepared)
@@ -156,6 +162,7 @@ def recommend_actions(seller_metrics: pd.DataFrame) -> pd.DataFrame:
             "evidence",
             "anomaly_count",
             "total_orders",
+            "delivered_orders_with_dates",
             "late_delivery_rate",
             "average_review_score",
             "negative_review_rate",

@@ -283,6 +283,7 @@ with scorecard_tab:
                     "risk_tier",
                     "trust_score",
                     "total_orders",
+                    "delivered_orders_with_dates",
                     "cancellation_rate_proxy",
                     "negative_review_rate",
                     "late_delivery_rate",
