@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
 
+from app.cache import dataset_version
 from app.overview import prepare_seller_metrics
 from app.theme import (
     HIGH_RISK_RED,
@@ -17,6 +20,7 @@ from app.theme import (
     WATCHLIST_YELLOW,
     apply_chart_polish,
 )
+from src.logging_config import get_pipeline_logger
 from src.sql_loader import DEFAULT_DB_PATH
 from src.trust_score import calculate_trust_score
 
@@ -39,6 +43,24 @@ MONTHLY_SIGNAL_COLUMNS = [
     "negative_review_rate",
     "average_review_score",
 ]
+FACT_COLUMNS = [
+    "order_id",
+    "seller_id",
+    "item_count",
+    "item_value",
+    "freight_value",
+    "product_category_name",
+    "order_status",
+    "order_purchase_timestamp",
+    "delivery_delay_days",
+    "is_late_delivery",
+    "purchase_month",
+    "review_score",
+    "review_count",
+    "response_time_hours",
+    "sentiment_bucket",
+]
+log = get_pipeline_logger("dashboard.signals")
 
 
 def prepare_signal_metrics(metrics: pd.DataFrame) -> pd.DataFrame:
@@ -145,27 +167,44 @@ def build_cohort_comparison(metrics: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
-def load_seller_order_fact(
-    seller_ids: list[str] | pd.Series | None = None,
-    db_path: str | Path = DEFAULT_DB_PATH,
+@st.cache_data(show_spinner=False)
+def _load_seller_order_fact_cached(
+    seller_ids: tuple[str, ...] | None,
+    db_path: str,
+    version: tuple[int, int],
 ) -> pd.DataFrame:
+    started = time.perf_counter()
     """Load order-level facts for the selected sellers from SQLite."""
     db_file = Path(db_path)
     if not db_file.is_file():
         raise FileNotFoundError(f"SQLite database not found: {db_file}")
 
-    query = "SELECT * FROM seller_order_fact"
+    query = f"SELECT {', '.join(FACT_COLUMNS)} FROM seller_order_fact"
     params: list[str] = []
     if seller_ids is not None:
-        seller_values = [seller_id for seller_id in seller_ids if pd.notna(seller_id)]
-        if not seller_values:
+        if not seller_ids:
             return pd.DataFrame()
-        placeholders = ", ".join(["?"] * len(seller_values))
+        placeholders = ", ".join(["?"] * len(seller_ids))
         query += f" WHERE seller_id IN ({placeholders})"
-        params.extend(seller_values)
+        params.extend(seller_ids)
 
     with sqlite3.connect(str(db_file)) as conn:
-        return pd.read_sql_query(query, conn, params=params)
+        result = pd.read_sql_query(query, conn, params=params)
+    log.info("Seller fact query completed in %.3fs (%s rows)", time.perf_counter() - started, len(result))
+    return result
+
+
+def load_seller_order_fact(
+    seller_ids: list[str] | pd.Series | None = None,
+    db_path: str | Path = DEFAULT_DB_PATH,
+) -> pd.DataFrame:
+    db_file = Path(db_path)
+    if not db_file.is_file():
+        raise FileNotFoundError(f"SQLite database not found: {db_file}")
+    values = None
+    if seller_ids is not None:
+        values = tuple(str(seller_id) for seller_id in seller_ids if pd.notna(seller_id))
+    return _load_seller_order_fact_cached(values, str(db_file), dataset_version(db_file)).copy()
 
 
 def prepare_monthly_seller_metrics(order_fact: pd.DataFrame) -> pd.DataFrame:

@@ -60,6 +60,18 @@ class SidebarFilterTests(unittest.TestCase):
         result = query_seller_metrics(risk_tier="High-Risk", db_path=self.db_path)
         self.assertEqual(result["seller_id"].tolist(), ["seller_c"])
 
+    def test_query_cache_refreshes_when_database_changes(self):
+        self.assertEqual(query_seller_metrics("seller_d", db_path=self.db_path).empty, True)
+        conn = sqlite3.connect(self.db_path)
+        conn.execute(
+            "INSERT INTO seller_metrics VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("seller_d", 10, 0, 0.0, 0.0, 5.0, 0.0, 12.0, 0.0, True),
+        )
+        conn.commit()
+        conn.close()
+        result = query_seller_metrics("seller_d", db_path=self.db_path)
+        self.assertEqual(result["seller_id"].tolist(), ["seller_d"])
+
     def test_assign_risk_tier_labels_scores(self):
         metrics = pd.DataFrame(
             {
