@@ -12,7 +12,8 @@ class DashboardRuntimeTests(unittest.TestCase):
     def test_dashboard_starts_without_streamlit_exception(self):
         from streamlit.testing.v1 import AppTest
 
-        app = AppTest.from_file("app/main.py").run(timeout=30)
+        app_path = Path(__file__).resolve().parents[1] / "app" / "main.py"
+        app = AppTest.from_file(app_path).run(timeout=30)
         self.assertFalse(app.exception, [str(error) for error in app.exception])
         self.assertIn("Seller Trust Analytics Dashboard", [title.value for title in app.title])
 
