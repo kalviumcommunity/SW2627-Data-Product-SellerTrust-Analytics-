@@ -1,6 +1,7 @@
+import pandas as pd
 import streamlit as st
 
-from app.actions import build_action_cards, format_evidence_bullets
+from app.actions import action_queue_export, build_action_queue, format_evidence_bullets, paginate_action_queue
 from app.compare import (
     build_difference_highlights,
     build_risk_badge_summary,
@@ -345,19 +346,43 @@ with actions_tab:
     elif filtered_seller_metrics.empty:
         st.error("No sellers match the selected filters.")
     else:
-        action_cards = build_action_cards(filtered_seller_metrics)
-        if action_cards.empty:
+        action_filter_col, sort_col, direction_col = st.columns([1, 1, 1])
+        with action_filter_col:
+            action_filter = st.selectbox("Action", ["All", "Escalate", "Coach", "Monitor"], key="action_filter")
+        with sort_col:
+            sort_by = st.selectbox(
+                "Sort by", ["Severity", "Trust Score", "Total Orders", "Seller ID"], key="action_sort"
+            )
+        with direction_col:
+            highest_first = st.checkbox("Highest priority first", value=True, key="action_direction")
+        action_queue = build_action_queue(
+            filtered_seller_metrics,
+            action=action_filter,
+            sort_by=sort_by,
+            ascending=(sort_by == "Severity") == highest_first,
+        )
+        page_size = 20
+        pages = max(1, (len(action_queue) + page_size - 1) // page_size)
+        page = st.number_input("Page", min_value=1, max_value=pages, value=1, step=1)
+        st.download_button(
+            "Download complete action queue",
+            action_queue_export(filtered_seller_metrics).to_csv(index=False).encode("utf-8"),
+            "seller_action_queue.csv",
+            "text/csv",
+        )
+        if action_queue.empty:
             st.success("No sellers currently need Escalate, Coach, or Monitor action.")
         else:
-            st.caption(f"{len(action_cards):,} flagged sellers need a recommended action.")
-            for _, seller in action_cards.head(20).iterrows():
+            st.caption(f"Showing page {page} of {pages} · {len(action_queue):,} flagged sellers.")
+            for _, seller in paginate_action_queue(action_queue, int(page), page_size).iterrows():
                 with st.container(border=True):
                     header_col, score_col = st.columns([3, 1])
                     with header_col:
                         st.markdown(f"### {seller['action_badge']} · Seller `{seller['seller_id']}`")
                         st.caption(f"{seller['severity_label']} | Risk tier: {seller['risk_tier']}")
                     with score_col:
-                        st.metric("Trust Score", f"{seller['trust_score']:.1f}")
+                        score = seller["trust_score"]
+                        st.metric("Trust Score", "n/a" if pd.isna(score) else f"{score:.1f}")
 
                     st.markdown(
                         f"<div style='height: 6px; border-radius: 4px; background: {seller['severity_color']};'></div>",
@@ -366,6 +391,13 @@ with actions_tab:
                     st.write("Supporting evidence")
                     for evidence in format_evidence_bullets(seller["evidence"]):
                         st.markdown(f"- {evidence}")
+                    st.caption(
+                        f"Primary driver: {seller['primary_driver']} · "
+                        f"Value: {seller['metric_value'] if pd.notna(seller['metric_value']) else 'n/a'} · "
+                        f"Denominator: {seller['denominator'] if pd.notna(seller['denominator']) else 'n/a'}"
+                    )
+                    st.write(seller["explanation"])
+                    st.info(f"Next step: {seller['recommended_next_step']}")
 
 with compare_tab:
     st.subheader("Compare Sellers")

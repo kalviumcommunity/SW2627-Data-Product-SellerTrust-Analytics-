@@ -44,6 +44,45 @@ def build_action_cards(metrics: pd.DataFrame) -> pd.DataFrame:
     ).drop(columns=["severity_rank"])
 
 
+def build_action_queue(
+    metrics: pd.DataFrame,
+    action: str = "All",
+    sort_by: str = "Severity",
+    ascending: bool = True,
+) -> pd.DataFrame:
+    """Return the complete flagged queue with dashboard-friendly controls applied."""
+    queue = build_action_cards(metrics)
+    if action != "All":
+        queue = queue[queue["recommended_action"] == action]
+    sort_columns = {
+        "Severity": ["severity_rank", "trust_score"],
+        "Trust Score": ["trust_score"],
+        "Total Orders": ["total_orders"],
+        "Seller ID": ["seller_id"],
+    }
+    queue = queue.copy()
+    queue["severity_rank"] = queue["recommended_action"].map(ACTION_SORT_ORDER)
+    columns = sort_columns.get(sort_by, sort_columns["Severity"])
+    return queue.sort_values(columns, ascending=ascending, na_position="last").drop(columns=["severity_rank"])
+
+
+def paginate_action_queue(queue: pd.DataFrame, page: int, page_size: int = 20) -> pd.DataFrame:
+    """Return one one-based page from an action queue."""
+    if page_size <= 0 or page <= 0:
+        raise ValueError("page and page_size must be positive")
+    start = (page - 1) * page_size
+    return queue.iloc[start : start + page_size]
+
+
+def action_queue_export(metrics: pd.DataFrame) -> pd.DataFrame:
+    """Return every recommendation in a CSV-safe form for complete export."""
+    recommendations = recommend_actions(metrics).copy()
+    recommendations["evidence"] = recommendations["evidence"].map(
+        lambda items: " | ".join(format_evidence_bullets(items))
+    )
+    return recommendations
+
+
 def format_evidence_bullets(evidence: list[str] | str) -> list[str]:
     """Normalize recommendation evidence into displayable bullet text."""
     if isinstance(evidence, list):

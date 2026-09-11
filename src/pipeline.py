@@ -138,6 +138,7 @@ def build_seller_metrics(seller_orders: pd.DataFrame) -> pd.DataFrame:
         # Sellers with no reviews keep NaN rather than an imputed neutral score: an absent
         # review is unknown, not average, and imputing 3.0 would trip the review thresholds.
         average_review_score=("review_score", "mean"),
+        review_count=("review_score", "count"),
         negative_review_rate=("review_score", lambda s: s.dropna().le(2).mean() if s.notna().any() else np.nan),
         average_response_time_hours=("response_time_hours", "mean"),
     )
