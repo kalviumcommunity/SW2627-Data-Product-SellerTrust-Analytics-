@@ -77,8 +77,9 @@ st.markdown(
         box-shadow: 0 4px 16px rgba(39, 33, 27, 0.04);
     }
     div[data-testid="stMetricLabel"],
+    div[data-testid="stMetricLabel"] p,
     div[data-testid="stMetricLabel"] * {
-        color: var(--seller-muted);
+        color: #4f4b46 !important;
         font-size: 0.72rem;
         font-weight: 650;
         letter-spacing: 0.07em;
@@ -267,6 +268,25 @@ with overview_tab:
                 "Return Rate uses the PRD's cancellation-rate proxy. Negative Sentiment "
                 "uses the share of 1-2 star reviews."
             )
+            eligible_sellers = seller_metrics[
+                seller_metrics["eligible_for_risk_score"].astype("string").str.lower().isin(["true", "1", "yes"])
+            ]
+            if eligible_sellers.empty:
+                st.info("No sellers currently have enough measurable activity for a portfolio readout.")
+            else:
+                risk_count = int(eligible_sellers["trust_score"].lt(60).sum())
+                strongest_signal = (
+                    "late delivery"
+                    if eligible_sellers["late_delivery_rate"].mean() > eligible_sellers["negative_review_rate"].mean()
+                    else "negative sentiment"
+                )
+                st.markdown(
+                    f"<div class='risk-banner'><strong>Portfolio readout</strong><br>"
+                    f"{risk_count} eligible seller(s) are below the 60-point trust threshold. "
+                    f"The strongest average risk signal in this view is <strong>{strongest_signal}</strong>. "
+                    "Open Seller Scorecard for the prioritised investigation list.</div>",
+                    unsafe_allow_html=True,
+                )
             overview_table = seller_metrics.head(10).copy()
             percentage_columns = [
                 "negative_review_rate",
@@ -297,11 +317,13 @@ with overview_tab:
                 "late_delivery_rate",
                 "cancellation_rate_proxy",
             ]
-            st.dataframe(
-                overview_table[[column for column in visible_columns if column in overview_table.columns]],
-                hide_index=True,
-                use_container_width=True,
-            )
+            with st.expander("Explore seller metrics", expanded=False):
+                st.caption("Detailed seller-level metrics for validation and investigation.")
+                st.dataframe(
+                    overview_table[[column for column in visible_columns if column in overview_table.columns]],
+                    hide_index=True,
+                    use_container_width=True,
+                )
 
 with signals_tab:
     st.subheader("Trust vs. Behaviour Signals")
