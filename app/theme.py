@@ -40,12 +40,15 @@ def apply_chart_polish(
     layout_args: dict[str, object] = {
         "height": height,
         "template": "plotly_white",
-        "margin": {"l": 30, "r": 24, "t": 64, "b": bottom_margin},
+        "paper_bgcolor": "#ffffff",
+        "plot_bgcolor": "#ffffff",
+        "font": {"color": "#191919", "size": 12},
+        "margin": {"l": 30, "r": 24, "t": 96, "b": bottom_margin},
         "hovermode": "closest",
         "legend": {
             "orientation": "h",
             "yanchor": "bottom",
-            "y": 1.02,
+            "y": 1.01,
             "xanchor": "right",
             "x": 1,
         },
@@ -56,6 +59,7 @@ def apply_chart_polish(
         layout_args["showlegend"] = showlegend
 
     fig.update_layout(**layout_args)
+    fig.update_layout(title={"y": 0.98, "yanchor": "top"})
     fig.update_xaxes(automargin=True)
     fig.update_yaxes(automargin=True)
     return fig

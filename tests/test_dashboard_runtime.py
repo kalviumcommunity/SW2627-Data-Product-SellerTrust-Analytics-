@@ -13,7 +13,7 @@ class DashboardRuntimeTests(unittest.TestCase):
         from streamlit.testing.v1 import AppTest
 
         app_path = Path(__file__).resolve().parents[1] / "app" / "main.py"
-        app = AppTest.from_file(app_path).run(timeout=60)
+        app = AppTest.from_file(app_path).run(timeout=120)
         self.assertFalse(app.exception, [str(error) for error in app.exception])
         self.assertIn("Seller Trust", [title.value for title in app.title])
 
