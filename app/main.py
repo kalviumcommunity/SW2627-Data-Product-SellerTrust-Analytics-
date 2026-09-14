@@ -108,23 +108,14 @@ st.markdown(
         border-color: var(--seller-coral);
     }
     button[kind="primary"]:hover { background: #d9513a; border-color: #d9513a; }
-    div[data-baseweb="tab-list"] {
-        gap: 0.15rem;
-        border-bottom-color: var(--seller-line);
-        overflow-x: auto;
-        padding-bottom: 0.15rem;
-    }
+    div[data-baseweb="tab-list"] { gap: 0.85rem; border-bottom-color: var(--seller-line); }
     button[data-baseweb="tab"] {
         color: var(--seller-muted);
         font-weight: 600;
-        margin-right: 0.25rem;
-        padding: 0.65rem 0.85rem;
+        padding: 0.55rem 0.2rem;
         white-space: nowrap;
     }
     button[aria-selected="true"][data-baseweb="tab"] { color: var(--seller-coral); }
-    div[data-testid="stDownloadButton"] { margin-bottom: 0.65rem; }
-    div[data-testid="stDownloadButton"] button,
-    div[data-testid="stButton"] button { min-height: 2.55rem; }
     h1, h2, h3 { letter-spacing: -0.035em; }
     h1 { font-size: clamp(2rem, 4vw, 3.25rem) !important; }
     h2, h3 { color: var(--seller-ink); }
