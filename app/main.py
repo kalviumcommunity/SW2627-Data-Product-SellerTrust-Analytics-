@@ -76,11 +76,13 @@ st.markdown(
         padding: 1rem 1.1rem;
         box-shadow: 0 4px 16px rgba(39, 33, 27, 0.04);
     }
-    div[data-testid="stMetricLabel"] p {
+    div[data-testid="stMetricLabel"],
+    div[data-testid="stMetricLabel"] * {
         color: var(--seller-muted);
         font-size: 0.72rem;
         font-weight: 650;
         letter-spacing: 0.07em;
+        opacity: 1 !important;
         text-transform: uppercase;
     }
     div[data-testid="stMetricValue"] {
@@ -265,8 +267,38 @@ with overview_tab:
                 "Return Rate uses the PRD's cancellation-rate proxy. Negative Sentiment "
                 "uses the share of 1-2 star reviews."
             )
+            overview_table = seller_metrics.head(10).copy()
+            percentage_columns = [
+                "negative_review_rate",
+                "late_delivery_rate",
+                "cancellation_rate_proxy",
+            ]
+            for column in percentage_columns:
+                if column in overview_table:
+                    overview_table[column] = (
+                        pd.to_numeric(overview_table[column], errors="coerce")
+                        .mul(100)
+                        .round(1)
+                        .map(lambda value: f"{value:.1f}%" if pd.notna(value) else "n/a")
+                    )
+            if "trust_score" in overview_table:
+                overview_table["trust_score"] = pd.to_numeric(overview_table["trust_score"], errors="coerce").round(1)
+            if "average_review_score" in overview_table:
+                overview_table["average_review_score"] = pd.to_numeric(
+                    overview_table["average_review_score"], errors="coerce"
+                ).round(2)
+            visible_columns = [
+                "seller_id",
+                "risk_tier",
+                "trust_score",
+                "total_orders",
+                "average_review_score",
+                "negative_review_rate",
+                "late_delivery_rate",
+                "cancellation_rate_proxy",
+            ]
             st.dataframe(
-                seller_metrics.head(10),
+                overview_table[[column for column in visible_columns if column in overview_table.columns]],
                 hide_index=True,
                 use_container_width=True,
             )
