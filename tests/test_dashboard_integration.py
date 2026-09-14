@@ -46,7 +46,7 @@ class DashboardIntegrationTests(unittest.TestCase):
         app_source = Path("app/main.py").read_text()
 
         self.assertIn(".block-container", app_source)
-        self.assertIn("max-width: 1280px", app_source)
+        self.assertIn("max-width: 1440px", app_source)
         self.assertIn("@media (max-width: 900px)", app_source)
 
     def test_main_app_has_refresh_button_and_timestamp(self):

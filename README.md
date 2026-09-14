@@ -1,4 +1,4 @@
-# Seller Trust Analytics
+# Seller Trust
 
 A data-driven dashboard that identifies which e-commerce sellers are eroding customer trust — before the pattern becomes a crisis.
 
