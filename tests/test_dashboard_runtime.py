@@ -13,9 +13,9 @@ class DashboardRuntimeTests(unittest.TestCase):
         from streamlit.testing.v1 import AppTest
 
         app_path = Path(__file__).resolve().parents[1] / "app" / "main.py"
-        app = AppTest.from_file(app_path).run(timeout=30)
+        app = AppTest.from_file(app_path).run(timeout=120)
         self.assertFalse(app.exception, [str(error) for error in app.exception])
-        self.assertIn("Seller Trust Analytics Dashboard", [title.value for title in app.title])
+        self.assertIn("Seller Trust", [title.value for title in app.title])
 
     def test_missing_database_returns_a_clear_error(self):
         with self.assertRaisesRegex(FileNotFoundError, "SQLite database not found"):

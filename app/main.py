@@ -40,35 +40,103 @@ from app.ui_state import (
 )
 
 st.set_page_config(
-    page_title="Seller Trust Analytics Dashboard",
+    page_title="Seller Trust",
     layout="wide",
 )
 
 st.markdown(
     """
     <style>
+    :root {
+        --seller-ink: #191919;
+        --seller-muted: #6d6a65;
+        --seller-paper: #f6f4f0;
+        --seller-panel: #ffffff;
+        --seller-line: #e5e1da;
+        --seller-coral: #ef6348;
+        --seller-coral-soft: #fce6df;
+        --seller-green: #28745b;
+        --seller-amber: #c88725;
+    }
+    [data-testid="stAppViewContainer"] {
+        background: var(--seller-paper);
+        color: var(--seller-ink);
+    }
+    [data-testid="stHeader"] { background: transparent; }
     .block-container {
-        max-width: 1280px;
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
+        max-width: 1440px;
+        padding-top: 2.25rem;
+        padding-bottom: 3rem;
     }
 
     div[data-testid="stMetric"] {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 0.85rem;
-        padding: 0.85rem 1rem;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+        background: var(--seller-panel);
+        border: 1px solid var(--seller-line);
+        border-radius: 0.35rem;
+        padding: 1rem 1.1rem;
+        box-shadow: 0 4px 16px rgba(39, 33, 27, 0.04);
+    }
+    div[data-testid="stMetricLabel"],
+    div[data-testid="stMetricLabel"] p,
+    div[data-testid="stMetricLabel"] * {
+        color: #4f4b46 !important;
+        font-size: 0.72rem;
+        font-weight: 650;
+        letter-spacing: 0.07em;
+        opacity: 1 !important;
+        text-transform: uppercase;
+    }
+    div[data-testid="stMetricValue"] {
+        color: var(--seller-ink);
+        font-weight: 700;
     }
 
     div[data-testid="stDataFrame"],
     div[data-testid="stPlotlyChart"] {
-        border-radius: 0.85rem;
+        background: var(--seller-panel);
+        border: 1px solid var(--seller-line);
+        border-radius: 0.35rem;
         overflow: hidden;
     }
 
     section[data-testid="stSidebar"] {
-        border-right: 1px solid #e5e7eb;
+        background: var(--seller-ink);
+        border-right: 0;
+    }
+    section[data-testid="stSidebar"] * { color: #f5f1eb; }
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] * { color: #a9a39a; }
+    section[data-testid="stSidebar"] hr { border-color: #3b3936; }
+    button[kind="primary"] {
+        background: var(--seller-coral);
+        border-color: var(--seller-coral);
+    }
+    button[kind="primary"]:hover { background: #d9513a; border-color: #d9513a; }
+    div[data-baseweb="tab-list"] { gap: 0.85rem; border-bottom-color: var(--seller-line); }
+    button[data-baseweb="tab"] {
+        color: var(--seller-muted);
+        font-weight: 600;
+        padding: 0.55rem 0.2rem;
+        white-space: nowrap;
+    }
+    button[aria-selected="true"][data-baseweb="tab"] { color: var(--seller-coral); }
+    h1, h2, h3 { letter-spacing: -0.035em; }
+    h1 { font-size: clamp(2rem, 4vw, 3.25rem) !important; }
+    h2, h3 { color: var(--seller-ink); }
+    .seller-eyebrow {
+        color: var(--seller-coral);
+        font-size: 0.72rem;
+        font-weight: 750;
+        letter-spacing: 0.14em;
+        margin-bottom: 0.35rem;
+        text-transform: uppercase;
+    }
+    .seller-subtitle { color: var(--seller-muted); font-size: 1rem; margin-top: -1rem; }
+    .risk-banner {
+        background: var(--seller-coral-soft);
+        border-left: 4px solid var(--seller-coral);
+        border-radius: 0.25rem;
+        color: var(--seller-ink);
+        padding: 0.75rem 1rem;
     }
 
     @media (max-width: 900px) {
@@ -82,16 +150,21 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("Seller Trust Analytics Dashboard")
+st.markdown('<div class="seller-eyebrow">Marketplace risk operations</div>', unsafe_allow_html=True)
+st.title("Seller Trust")
+st.markdown(
+    '<p class="seller-subtitle">See trust signals early. Act before customer confidence erodes.</p>',
+    unsafe_allow_html=True,
+)
 initialise_filter_state(st.session_state)
 
 with st.sidebar:
-    st.header("Seller Trust Analytics")
+    st.header("Seller Trust")
     st.write(
         "Explore seller trust signals using delivery performance, review scores, "
         "cancellation proxies, and risk indicators from the Olist e-commerce data."
     )
-    st.caption("Use the dashboard tabs to move from marketplace overview to seller-level risk alerts.")
+    st.caption("Risk intelligence for marketplace operations")
     st.divider()
     if st.button("Refresh Data", use_container_width=True):
         with st.spinner("Refreshing dashboard data..."):
@@ -195,11 +268,62 @@ with overview_tab:
                 "Return Rate uses the PRD's cancellation-rate proxy. Negative Sentiment "
                 "uses the share of 1-2 star reviews."
             )
-            st.dataframe(
-                seller_metrics.head(10),
-                hide_index=True,
-                use_container_width=True,
-            )
+            eligible_sellers = seller_metrics[
+                seller_metrics["eligible_for_risk_score"].astype("string").str.lower().isin(["true", "1", "yes"])
+            ]
+            if eligible_sellers.empty:
+                st.info("No sellers currently have enough measurable activity for a portfolio readout.")
+            else:
+                risk_count = int(eligible_sellers["trust_score"].lt(60).sum())
+                strongest_signal = (
+                    "late delivery"
+                    if eligible_sellers["late_delivery_rate"].mean() > eligible_sellers["negative_review_rate"].mean()
+                    else "negative sentiment"
+                )
+                st.markdown(
+                    f"<div class='risk-banner'><strong>Portfolio readout</strong><br>"
+                    f"{risk_count} eligible seller(s) are below the 60-point trust threshold. "
+                    f"The strongest average risk signal in this view is <strong>{strongest_signal}</strong>. "
+                    "Open Seller Scorecard for the prioritised investigation list.</div>",
+                    unsafe_allow_html=True,
+                )
+            overview_table = seller_metrics.head(10).copy()
+            percentage_columns = [
+                "negative_review_rate",
+                "late_delivery_rate",
+                "cancellation_rate_proxy",
+            ]
+            for column in percentage_columns:
+                if column in overview_table:
+                    overview_table[column] = (
+                        pd.to_numeric(overview_table[column], errors="coerce")
+                        .mul(100)
+                        .round(1)
+                        .map(lambda value: f"{value:.1f}%" if pd.notna(value) else "n/a")
+                    )
+            if "trust_score" in overview_table:
+                overview_table["trust_score"] = pd.to_numeric(overview_table["trust_score"], errors="coerce").round(1)
+            if "average_review_score" in overview_table:
+                overview_table["average_review_score"] = pd.to_numeric(
+                    overview_table["average_review_score"], errors="coerce"
+                ).round(2)
+            visible_columns = [
+                "seller_id",
+                "risk_tier",
+                "trust_score",
+                "total_orders",
+                "average_review_score",
+                "negative_review_rate",
+                "late_delivery_rate",
+                "cancellation_rate_proxy",
+            ]
+            with st.expander("Explore seller metrics", expanded=False):
+                st.caption("Detailed seller-level metrics for validation and investigation.")
+                st.dataframe(
+                    overview_table[[column for column in visible_columns if column in overview_table.columns]],
+                    hide_index=True,
+                    use_container_width=True,
+                )
 
 with signals_tab:
     st.subheader("Trust vs. Behaviour Signals")
