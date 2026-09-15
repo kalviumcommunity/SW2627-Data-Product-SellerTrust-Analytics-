@@ -48,13 +48,13 @@ st.markdown(
     """
     <style>
     :root {
-        --seller-ink: #191919;
-        --seller-muted: #6d6a65;
-        --seller-paper: #f6f4f0;
-        --seller-panel: #ffffff;
-        --seller-line: #e5e1da;
-        --seller-coral: #ef6348;
-        --seller-coral-soft: #fce6df;
+        --seller-ink: var(--text-color);
+        --seller-muted: color-mix(in srgb, var(--text-color) 68%, transparent);
+        --seller-paper: var(--background-color);
+        --seller-panel: var(--secondary-background-color);
+        --seller-line: color-mix(in srgb, var(--text-color) 16%, transparent);
+        --seller-coral: var(--primary-color);
+        --seller-coral-soft: color-mix(in srgb, var(--primary-color) 14%, var(--background-color));
         --seller-green: #28745b;
         --seller-amber: #c88725;
     }
@@ -79,7 +79,7 @@ st.markdown(
     div[data-testid="stMetricLabel"],
     div[data-testid="stMetricLabel"] p,
     div[data-testid="stMetricLabel"] * {
-        color: #4f4b46 !important;
+        color: var(--seller-muted) !important;
         font-size: 0.72rem;
         font-weight: 650;
         letter-spacing: 0.07em;
@@ -100,17 +100,20 @@ st.markdown(
     }
 
     section[data-testid="stSidebar"] {
-        background: var(--seller-ink);
-        border-right: 0;
+        background: var(--secondary-background-color);
+        border-right: 1px solid var(--seller-line);
     }
-    section[data-testid="stSidebar"] * { color: #f5f1eb; }
-    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] * { color: #a9a39a; }
-    section[data-testid="stSidebar"] hr { border-color: #3b3936; }
+    section[data-testid="stSidebar"] * { color: var(--seller-ink); }
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] * { color: var(--seller-muted); }
+    section[data-testid="stSidebar"] hr { border-color: var(--seller-line); }
     button[kind="primary"] {
         background: var(--seller-coral);
         border-color: var(--seller-coral);
     }
-    button[kind="primary"]:hover { background: #d9513a; border-color: #d9513a; }
+    button[kind="primary"]:hover {
+        background: color-mix(in srgb, var(--primary-color) 82%, black);
+        border-color: color-mix(in srgb, var(--primary-color) 82%, black);
+    }
     div[data-baseweb="tab-list"] { gap: 0.85rem; border-bottom-color: var(--seller-line); }
     button[data-baseweb="tab"] {
         color: var(--seller-muted);
