@@ -1,6 +1,6 @@
 # PRD — Seller Behaviour & Trust Risk Dashboard
 ### (Learning Assignment — built on the Olist Brazilian E-Commerce Dataset)
-### Status: **Decisions Locked — Ready for Build**
+### Status: **Decisions Locked — Implemented v1 baseline**
 
 ---
 
@@ -58,6 +58,55 @@ Since this is a learning project and not a real company, these are roles you're 
 
 **Refresh rate:** Not applicable — static historical dataset, not a live feed.
 
+### Verified Olist v1 Baseline
+
+The following figures come from the full pipeline and validation run against the
+five CSV files currently supplied in `data/raw/` (validated 2026-09-15):
+
+| Measure | Verified value |
+|---|---:|
+| Raw orders | 99,441 |
+| Raw order-item rows | 112,650 |
+| Raw review rows | 99,224 |
+| Sellers with at least one item | 3,095 |
+| Seller-order fact rows | 100,010 |
+| Distinct orders represented in the fact table | 98,666 |
+| Seller metric rows | 3,095 |
+| Eligible sellers (at least 5 orders and delivery evidence) | 1,793 (57.9%) |
+| Ineligible sellers | 1,302 (42.1%) |
+| Cancelled seller orders | 461 |
+| Trust score mean / median | 87.92 / 89.06 |
+| Trust score standard deviation | 7.94 |
+| Trust score range | 38.03–100.00 |
+
+The fact table represents every one of the 98,666 raw orders that has at least
+one order item. The difference between raw orders and fact orders is therefore
+documented as 775 raw orders without line items, rather than treated as a join
+failure. All 3,095 sellers with an item are represented by one seller-metric
+row.
+
+Risk-tier coverage across all 3,095 sellers is: Reliable 1,676 (54.2%),
+Insufficient Data 1,302 (42.1%), Inconsistent 101 (3.3%), Return-Prone 10
+(0.3%), and High-Risk 6 (0.2%).
+
+Among eligible sellers, late-delivery rate has the strongest measured
+relationship with trust score (Pearson r = -0.708). The cancellation-rate and
+negative-review proxies have a weaker positive relationship (r = +0.272).
+
+### Implemented Trust Score
+
+For eligible sellers, the composite score is a weighted 0–100 score:
+
+| Component | Weight |
+|---|---:|
+| Delivery performance (`1 - late_delivery_rate`) | 30% |
+| Review quality (`(average_review_score - 1) / 4`) | 30% |
+| Cancellation performance (`1 - cancellation_rate_proxy`) | 20% |
+| Negative-review performance (`1 - negative_review_rate`) | 20% |
+
+Sellers with fewer than 5 orders or no delivery evidence remain unscored and
+are assigned the `Insufficient Data` tier.
+
 ### 🔒 Locked Data-Mapping Decisions
 
 The mockup (Section 10) designs around fields Olist doesn't have. These are now resolved, not open questions:
@@ -82,7 +131,7 @@ Since there's no live usage to measure (no real users logging in), KPIs are abou
 | Risk-score separation | Manually check 15–20 sellers flagged "high risk" — do their review/delivery histories actually look bad? | ≥ 80% agree with manual judgement |
 | Coverage | % of sellers with enough order history (e.g. ≥5 orders) to compute a reliable score | Document what "enough data" means — don't score sellers with 1 order |
 | Data completeness | % of orders successfully joined across orders → items → reviews → sellers | ≥ 95% join success (document what's lost and why) |
-| Proxy correlation check | Correlation between Return Rate proxy and Dispute Rate proxy (both derived from overlapping data) | Document the correlation value — if very high, consider merging into one signal rather than double-counting |
+| Proxy correlation check | Pearson correlation between cancellation-rate proxy and negative-review proxy across eligible sellers | Observed r = +0.272 (n = 1,793); retain as separate signals for v1 and monitor overlap |
 
 ---
 
@@ -118,7 +167,7 @@ Since there's no live usage to measure (no real users logging in), KPIs are abou
 
 1. **Ingest:** Load orders, order_items, order_reviews, sellers, products CSVs.
 2. **Join:** `order_items.seller_id` → `orders` → `order_reviews` → `products`. Validate join success rate.
-3. **Clean:** Handle missing review scores (`[VERIFY: check NULL rate]`), parse date fields, compute delivery delay = `order_delivered_customer_date − order_estimated_delivery_date`.
+3. **Clean:** Handle 5 missing average review scores, 5 missing negative-review rates, 5 missing response-time values, and 125 missing delivery-rate values; parse date fields and compute delivery delay = `order_delivered_customer_date − order_estimated_delivery_date`.
 4. **Feature engineering per seller:**
    - Return Rate proxy = % orders `canceled`
    - Dispute Rate proxy = % reviews scored 1–2
@@ -127,7 +176,7 @@ Since there's no live usage to measure (no real users logging in), KPIs are abou
    - Delivery delay rate, review score trend (recent vs older), order volume (for confidence weighting)
 5. **Score:** Combine features into a single Trust Score (0–100) — document weighting logic and rationale. Check correlation between Return Rate and Dispute Rate proxies before finalizing weights (see Section 5).
 6. **Segment:** Bucket sellers into Reliable / Inconsistent / Return-Prone / High-Risk tiers using thresholds from the wireframe (Section 10).
-7. **Visualize:** Streamlit dashboard matching the 5-section structure in Section 10.
+7. **Visualize:** Streamlit dashboard with overview, signal analysis, scorecard, segments, category analysis, actions, seller detail, and seller comparison views.
 
 ---
 
@@ -135,7 +184,7 @@ Since there's no live usage to measure (no real users logging in), KPIs are abou
 
 | Risk / Assumption | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Return Rate and Dispute Rate proxies are both derived from overlapping data (cancellations, low scores) | High | Medium — risk of double-counting the same underlying signal in the composite score | Check correlation between the two proxies before finalizing score weights; consider merging if highly correlated |
+| Return Rate and Dispute Rate proxies are both derived from overlapping data (cancellations, low scores) | High | Medium — risk of double-counting the same underlying signal in the composite score | Observed cancellation/negative-review correlation is r = +0.272 across 1,793 eligible sellers; retain as separate v1 signals and monitor overlap |
 | Review comments are in Portuguese, sentiment uses numeric score only | Certain (by design for v1) | Low — score-bucketed sentiment is coarser than true text sentiment | Documented as a v1 scope decision, not a gap; flag as v2 opportunity |
 | Response Time proxy measures review-reply speed, not general support responsiveness | Certain | Low-Medium — may not reflect true customer service quality | State this limitation explicitly wherever Response Time is shown |
 | Sellers with very few orders get unreliable scores | High | Medium — could unfairly flag a seller with 1 bad review | Set a minimum order-count threshold before a seller gets scored |
@@ -149,10 +198,10 @@ Since there's no live usage to measure (no real users logging in), KPIs are abou
 
 The mockup is organized in investigation order, not menu order — overview, then cause analysis, then per-seller evidence, then portfolio view, then decision:
 
-1. **Trust Overview** — marketplace-wide baseline. 4 KPI cards (Avg Trust Score, Return Rate, Negative Sentiment %, At-Risk Seller count), a trust-score distribution histogram, and a "Top Trust-Eroding Behaviours" ranking chart.
-2. **Trust vs. Behaviour Signals** — cohort comparison table (high-trust vs low-trust sellers), a trust-score trend line over time, a return-rate-vs-trust-score scatter plot, and a behaviour-correlation bar chart.
-3. **Seller Scorecard** — sortable table of all sellers (Trust Score, Return Rate, Sentiment, Response Time, Dispute Rate), with a click-to-expand detail panel per seller.
-4. **Behaviour Segments** — portfolio view grouping sellers into 4 tiers (Reliable / Inconsistent / Return-Prone / High-Risk) with a stacked bar showing tier composition.
+1. **Trust Overview** — marketplace-wide baseline. 4 KPI cards (Avg Trust Score, Return Rate, Negative Sentiment %, At-Risk Seller count), a portfolio readout, and an expandable seller-metrics table.
+2. **Trust vs. Behaviour Signals** — cohort comparison table (high-trust vs low-trust sellers), a trust-score trend line over time, a return-rate-vs-trust-score scatter plot, a correlation heatmap, and seller performance history charts.
+3. **Seller Scorecard** — table of sellers (Trust Score, Return Rate, Sentiment, Response Time, and delivery metrics) with anomaly details.
+4. **Behaviour Segments** — portfolio view grouping sellers into Reliable, Inconsistent, Return-Prone, High-Risk, and Insufficient Data tiers with a composition chart.
 5. **Trust-Risk Actions** — action cards per flagged seller with a recommended tier (Escalate / Coach / Monitor) and supporting evidence.
 
 **How this maps to the PRD:**
@@ -161,6 +210,7 @@ The mockup is organized in investigation order, not menu order — overview, the
 - Section 3's Scorecard directly implements US-01 and US-02.
 - Section 4's Behaviour Segments implements the tiers referenced in Section 7's scope.
 - Section 5's Action Cards implement US-05.
+- The implemented dashboard also includes Category Analysis, Seller Detail, and Compare Sellers views beyond the original five-section wireframe.
 
 **Gaps between the mockup and what v1 can actually deliver** (document these, don't silently build around them):
 - The mockup's header says data sources include "Seller Ops pipelines" — no such pipeline exists here; all 4 KPIs are proxy-derived per Section 4.
@@ -180,12 +230,12 @@ The mockup is organized in investigation order, not menu order — overview, the
 - [x] Risk table includes the proxy-overlap and Portuguese-text risks
 - [x] No aspirational language ("should be useful," "real-time," "all stakeholders")
 - [x] Wireframe included, mapped to PRD sections, gaps documented
+- [x] Full pipeline baseline and data-quality figures recorded in Section 4
 - [ ] Stakeholder alignment review completed — **still needs instructor/reviewer sign-off**
 - [x] A non-technical reader can tell what this dashboard does and why
 
 ---
 
 ### What's left before this is fully submission-ready
-1. Run profiling on the CSVs to replace the one remaining `[VERIFY]` (NULL rate on review_score) with a real number.
-2. Get the instructor/reviewer sign-off checkbox closed.
-3. Optional: run the correlation check between Return Rate and Dispute Rate proxies once the data is loaded, and report the result back into Section 9.
+1. Get the instructor/reviewer sign-off checkbox closed.
+2. Re-run the validation baseline if the raw Olist files or scoring configuration changes.
